@@ -1,0 +1,9 @@
+import React from 'react';
+
+export default function RaceArena() {
+  return (
+    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8">
+      <h1 className="text-2xl font-bold font-mono text-rose-400">FLASH-SALE CONCURRENCY ARENA (Step 5)</h1>
+    </div>
+  );
+}
