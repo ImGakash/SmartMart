@@ -11,7 +11,9 @@ import {
   Circle,
   Database,
   Radio,
-  Search
+  Search,
+  ShieldCheck,
+  BookOpen
 } from 'lucide-react';
 import { useApp } from '../state/AppContext.jsx';
 import ToastContainer from './Toast.jsx';

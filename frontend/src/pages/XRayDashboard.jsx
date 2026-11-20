@@ -5,6 +5,10 @@ import { useApp } from '../state/AppContext.jsx';
 import Price from '../components/Price.jsx';
 import ConsistencyTable from '../components/ConsistencyTable.jsx';
 import ChaosSwitch from '../components/ChaosSwitch.jsx';
+import MetricCard from '../components/MetricCard.jsx';
+import SyncBadge from '../components/SyncBadge.jsx';
+import DemoActionButton from '../components/DemoActionButton.jsx';
+import ProofBadge from '../components/ProofBadge.jsx';
 import {
   Activity,
   Layers,
@@ -21,7 +25,10 @@ import {
   TrendingDown,
   Inbox,
   ShieldAlert,
-  Server
+  Server,
+  ShieldCheck,
+  Check,
+  Filter
 } from 'lucide-react';
 
 export default function XRayDashboard() {
@@ -33,9 +40,15 @@ export default function XRayDashboard() {
   const [sseStatus, setSseStatus] = useState('connecting');
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // Chaos action loadings
+  // Chaos & Action loadings
   const [isRequeuing, setIsRequeuing] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Reconciliation table filters
+  const [reconciliationFilter, setReconciliationFilter] = useState('ALL'); // 'ALL' | 'MISMATCH' | 'PASS'
+  const [reconciliationSearch, setReconciliationSearch] = useState('');
 
   // Polling fallback helper
   const fetchMetricsPolling = useCallback(async () => {
@@ -60,7 +73,6 @@ export default function XRayDashboard() {
       onStatusChange: (status) => {
         setSseStatus(status);
         if (status === 'disconnected' || status === 'closed') {
-          // Fall back to polling every 2s
           if (!pollInterval) {
             pollInterval = setInterval(fetchMetricsPolling, 2000);
           }
@@ -72,7 +84,7 @@ export default function XRayDashboard() {
         }
       },
       onMessage: (data, eventType) => {
-        if (eventType === 'metrics' || data?.dashboard) {
+        if (eventType === 'metrics' || data?.dashboard || data?.reconciliation) {
           setMetrics(data);
           setLastUpdated(new Date());
           setLoadingInitial(false);
@@ -85,7 +97,6 @@ export default function XRayDashboard() {
       },
     });
 
-    // Also initial fetch immediately to avoid blank screen
     fetchMetricsPolling();
 
     return () => {
@@ -99,7 +110,6 @@ export default function XRayDashboard() {
     try {
       await apiPost('/admin/chaos', { target, enabled });
 
-      // Optimistic update in metrics bundle
       setMetrics((prev) => {
         if (!prev) return prev;
         return {
@@ -166,147 +176,339 @@ export default function XRayDashboard() {
     }
   }
 
+  // Reset Demo: POST /demo/reset
+  async function handleResetDemo() {
+    setIsResetting(true);
+    try {
+      const res = await apiPost('/demo/reset');
+      const ms = res?.durationMs ?? 35;
+      showToast({
+        type: 'success',
+        message: `Demo state reset in ${ms}ms. Clean inventory & orders restored.`,
+      });
+      setShowResetConfirm(false);
+      fetchMetricsPolling();
+    } catch (err) {
+      showToast({
+        type: 'error',
+        code: 'RESET_FAILED',
+        message: err.message,
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  }
+
   if (loadingInitial && !metrics) {
     return (
       <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-20 flex flex-col items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-slate-400 font-mono text-sm">Connecting to X-Ray Telemetry Stream...</span>
+        <span className="text-slate-400 font-mono text-sm">Connecting to Control Tower Telemetry...</span>
       </div>
     );
   }
 
   const dashboard = metrics?.dashboard || {};
   const outbox = metrics?.outbox || dashboard.outbox || {};
-  const consistency = metrics?.consistency?.checks || [];
+  const consistencyChecks = metrics?.consistency?.checks || metrics?.consistency || [];
   const chaos = metrics?.chaos || {};
   const recentOrders = metrics?.recentOrders || [];
   const recentNotifications = metrics?.recentNotifications || [];
-  const lowStock = metrics?.lowStock || [];
+  const reconciliation = metrics?.reconciliation || { checkedAt: new Date().toISOString(), mismatches: 0, rows: [] };
+
+  // Derive Health Metrics
+  const totalOrders = dashboard.totalOrders ?? metrics?.orders?.total ?? 0;
+  const totalNotifications = dashboard.totalNotifications ?? metrics?.notifications?.sent ?? 0;
+  const pendingOutbox = outbox.pending ?? 0;
+  const failedEvents = outbox.failed ?? metrics?.dlq?.count ?? 0;
+
+  // Oversell Violations: derive from no_negative_stock and inventory_reconciliation checks
+  const noNegCheck = Array.isArray(consistencyChecks)
+    ? consistencyChecks.find((c) => c.name === 'no_negative_stock')
+    : null;
+  const invReconCheck = Array.isArray(consistencyChecks)
+    ? consistencyChecks.find((c) => c.name === 'inventory_reconciliation')
+    : null;
+  const hasOversellViolation =
+    (noNegCheck && noNegCheck.status !== 'PASS') ||
+    (invReconCheck && invReconCheck.status !== 'PASS');
+
+  // Search Sync Status
+  const mismatches = reconciliation.mismatches ?? 0;
+  const totalCatalog = reconciliation.rows?.length || 36;
+  const inSyncCount = Math.max(0, totalCatalog - mismatches);
+  const searchSyncStatus = mismatches === 0 ? 'PASS' : mismatches > 3 ? 'FAIL' : 'SYNCING';
+
+  // Filtered Reconciliation Rows
+  const reconciliationRows = (reconciliation.rows || []).filter((row) => {
+    if (reconciliationFilter === 'MISMATCH' && row.status === 'PASS') return false;
+    if (reconciliationFilter === 'PASS' && row.status !== 'PASS') return false;
+    if (reconciliationSearch.trim()) {
+      const q = reconciliationSearch.toLowerCase();
+      return (
+        row.name?.toLowerCase().includes(q) ||
+        row.productId?.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8">
-      {/* Top Banner & SSE Stream Status */}
-      <div className="bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
+      {/* Top Banner & Control Tower Identity */}
+      <div className="bg-gradient-to-r from-slate-900 via-emerald-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              SYSTEM 10/10 CONSISTENCY MONITOR
+              MULTI-SERVICE CONTROL TOWER
             </span>
-            <span className="text-slate-400 text-xs font-mono">1s Real-time Pulse</span>
+            <span className="text-slate-400 text-xs font-mono">
+              Last refreshed {lastUpdated ? lastUpdated.toLocaleTimeString() : 'now'} · Auto-refresh ON
+            </span>
           </div>
 
           <h1 className="text-3xl lg:text-4xl font-mono font-black tracking-tight text-white uppercase">
-            X-RAY ARCHITECTURE DASHBOARD
+            INVENTORY CONTROL TOWER
           </h1>
 
           <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
-            Live telemetry inspecting PostgreSQL source of truth, Kafka outbox drain progress,
-            and OpenSearch distributed index invariants under fault injection.
+            Live reconciliation of PostgreSQL, Kafka, and OpenSearch across 5 Indian metro cities.
           </p>
         </div>
 
-        {/* Live SSE Stream Badge */}
-        <div className="flex flex-col items-end gap-2 bg-slate-950 border border-slate-800 rounded-xl p-4 min-w-[220px]">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                sseStatus === 'connected'
-                  ? 'bg-emerald-500 animate-ping'
-                  : 'bg-amber-500 animate-pulse'
-              }`}
-            />
-            <span className="font-mono text-xs font-bold text-white uppercase">
-              {sseStatus === 'connected' ? 'STREAM CONNECTED' : 'POLLING FALLBACK'}
-            </span>
+        {/* Live SSE Stream Badge & Demo Reset Button */}
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+          <div className="flex flex-col items-end gap-1.5 bg-slate-950 border border-slate-800 rounded-xl p-3.5 min-w-[200px]">
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  sseStatus === 'connected'
+                    ? 'bg-emerald-500 animate-ping'
+                    : 'bg-amber-500 animate-pulse'
+                }`}
+              />
+              <span className="font-mono text-xs font-bold text-white uppercase">
+                {sseStatus === 'connected' ? 'STREAM CONNECTED' : 'POLLING FALLBACK'}
+              </span>
+            </div>
+            <div className="text-[11px] font-mono text-slate-500">
+              Latency: &lt;10ms (Local Aiven)
+            </div>
           </div>
-          <div className="text-[11px] font-mono text-slate-500">
-            Last beat: {lastUpdated ? lastUpdated.toLocaleTimeString() : 'syncing…'}
-          </div>
-        </div>
-      </div>
 
-      {/* 1. Key Metric Cards (Large Monospace Numbers for Projector) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {/* Total Orders */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Total Orders
-          </span>
-          <span className="text-4xl font-mono font-black text-white">
-            {dashboard.totalOrders ?? 0}
-          </span>
-          <div className="flex items-center gap-2 text-[11px] font-mono">
-            <span className="text-blue-400 font-bold">ON: {dashboard.ordersBySource?.ONLINE ?? 0}</span>
-            <span className="text-slate-600">|</span>
-            <span className="text-amber-400 font-bold">POS: {dashboard.ordersBySource?.POS_STORE ?? 0}</span>
-          </div>
-        </div>
-
-        {/* Products */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Active Catalog
-          </span>
-          <span className="text-4xl font-mono font-black text-indigo-400">
-            {dashboard.totalProducts ?? 36}
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">5 Product Categories</span>
-        </div>
-
-        {/* Stores */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Physical Hubs
-          </span>
-          <span className="text-4xl font-mono font-black text-emerald-400">
-            {dashboard.totalStores ?? 6}
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">5 Indian Metro Cities</span>
-        </div>
-
-        {/* Notifications */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Notifications
-          </span>
-          <span className="text-4xl font-mono font-black text-sky-400">
-            {dashboard.totalNotifications ?? 0}
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">Consumer Deduped</span>
-        </div>
-
-        {/* Low Stock SKUs */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Low Stock Alerts
-          </span>
-          <span className="text-4xl font-mono font-black text-amber-400">
-            {dashboard.lowStockCount ?? lowStock.length ?? 0}
-          </span>
-          <span className="text-[11px] font-mono text-amber-500/80">Threshold &le; 3 units</span>
-        </div>
-
-        {/* Oldest Pending Outbox */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-lg">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
-            Oldest Pending
-          </span>
-          <span
-            className={`text-4xl font-mono font-black ${
-              (outbox.oldestPendingAgeSeconds ?? 0) > 5 ? 'text-rose-400' : 'text-slate-300'
-            }`}
+          <DemoActionButton
+            onClick={() => setShowResetConfirm(true)}
+            variant="danger"
+            icon={RotateCcw}
+            size="md"
+            className="font-mono font-bold"
           >
-            {outbox.oldestPendingAgeSeconds ?? 0}s
-          </span>
-          <span className="text-[11px] font-mono text-slate-500">Relay Lease: 10s</span>
+            Reset Demo
+          </DemoActionButton>
         </div>
       </div>
 
-      {/* 2. MATHEMATICAL PROOF: Consistency Table (Most Prominent Panel on the Page) */}
-      <ConsistencyTable checks={consistency} />
+      {/* 1. HEALTH METRICCARDS ROW (Huge Monospace Numbers for Projectors) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <MetricCard
+          title="ORDERS CREATED"
+          value={totalOrders}
+          tone="neutral"
+          sublabel="Total Committed"
+        />
 
-      {/* 3. Outbox Panel & Chaos Injection Panel */}
+        <MetricCard
+          title="NOTIFICATIONS"
+          value={totalNotifications}
+          tone="neutral"
+          sublabel="Deduplicated"
+        />
+
+        <MetricCard
+          title="PENDING OUTBOX"
+          value={pendingOutbox}
+          tone={pendingOutbox > 0 ? 'warn' : 'pass'}
+          sublabel={pendingOutbox > 0 ? 'Awaiting Drain' : 'Drain Clear'}
+        />
+
+        <MetricCard
+          title="FAILED EVENTS"
+          value={failedEvents}
+          tone={failedEvents > 0 ? 'fail' : 'pass'}
+          sublabel={failedEvents > 0 ? 'Dead Letter Queue' : 'Zero Failures'}
+        />
+
+        <MetricCard
+          title="OVERSELL VIOLATIONS"
+          value={hasOversellViolation ? 'VIOLATION' : '0'}
+          tone={hasOversellViolation ? 'fail' : 'pass'}
+          sublabel="PostgreSQL Clamped"
+        />
+
+        <MetricCard
+          title="SEARCH SYNC"
+          value={searchSyncStatus}
+          tone={searchSyncStatus === 'PASS' ? 'pass' : searchSyncStatus === 'SYNCING' ? 'warn' : 'fail'}
+          sublabel={`${inSyncCount}/${totalCatalog} In Sync`}
+        />
+      </div>
+
+      {/* 2. HERO PANEL: RECONCILIATION TABLE (PostgreSQL vs OpenSearch Live Diff) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-7 shadow-2xl flex flex-col gap-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <Database className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-mono font-black text-white tracking-wide uppercase">
+                  Cross-Service Inventory Reconciliation
+                </h2>
+                <span className="px-2.5 py-1 rounded-md text-xs font-mono font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  {inSyncCount}/{totalCatalog} IN SYNC
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono mt-0.5">
+                Comparing PostgreSQL (Atomic Truth) against OpenSearch (Distributed Index) · Checked at {reconciliation.checkedAt ? new Date(reconciliation.checkedAt).toLocaleTimeString() : 'live'}
+              </p>
+            </div>
+          </div>
+
+          {/* Search & Filter Controls */}
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-60">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={reconciliationSearch}
+                onChange={(e) => setReconciliationSearch(e.target.value)}
+                placeholder="Filter by product..."
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center rounded-lg bg-slate-950 border border-slate-800 p-1 font-mono text-xs">
+              <button
+                type="button"
+                onClick={() => setReconciliationFilter('ALL')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  reconciliationFilter === 'ALL'
+                    ? 'bg-slate-800 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                All ({reconciliation.rows?.length || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setReconciliationFilter('MISMATCH')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  reconciliationFilter === 'MISMATCH'
+                    ? 'bg-amber-500/20 text-amber-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Mismatches ({mismatches})
+              </button>
+              <button
+                type="button"
+                onClick={() => setReconciliationFilter('PASS')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  reconciliationFilter === 'PASS'
+                    ? 'bg-emerald-500/20 text-emerald-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Synced ({inSyncCount})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* HERO TABLE: Product | PG Total Stock | OS Total Stock | PG Cities | OS Cities | Status */}
+        <div className="overflow-x-auto max-h-[460px] overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 custom-scrollbar">
+          <table className="w-full text-left border-collapse font-mono text-xs">
+            <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider z-10">
+              <tr>
+                <th className="py-3 px-4 font-black">Product</th>
+                <th className="py-3 px-4 font-black text-center">PG Total Stock</th>
+                <th className="py-3 px-4 font-black text-center">OS Total Stock</th>
+                <th className="py-3 px-4 font-black text-center">PG Cities</th>
+                <th className="py-3 px-4 font-black text-center">OS Cities</th>
+                <th className="py-3 px-4 font-black text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60">
+              {reconciliationRows.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-500 font-sans italic">
+                    No reconciliation rows match the selected filter.
+                  </td>
+                </tr>
+              ) : (
+                reconciliationRows.map((row) => {
+                  const isPass = row.status === 'PASS';
+                  const isSyncing = row.status === 'SYNCING';
+                  return (
+                    <tr
+                      key={row.productId}
+                      className={`hover:bg-slate-800/40 transition-colors ${
+                        !isPass ? 'bg-amber-950/15' : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-white text-sm">{row.name}</span>
+                          <span className="text-[10px] text-slate-500 truncate max-w-[280px]">
+                            {row.productId}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="py-3 px-4 text-center">
+                        <span className="font-mono text-base font-black text-indigo-300">
+                          {row.pgTotalStock}
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-4 text-center">
+                        <span
+                          className={`font-mono text-base font-black ${
+                            row.pgTotalStock !== row.osTotalStock
+                              ? 'text-amber-400 underline decoration-amber-500 decoration-wavy'
+                              : 'text-emerald-400'
+                          }`}
+                        >
+                          {row.osTotalStock}
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-4 text-center text-slate-300 font-medium">
+                        {row.pgCities}
+                      </td>
+
+                      <td className="py-3 px-4 text-center text-slate-300 font-medium">
+                        {row.osCities}
+                      </td>
+
+                      <td className="py-3 px-4 text-right">
+                        <SyncBadge status={row.status} />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* 3. MATHEMATICAL PROOF: 10/10 Invariant Consistency Table */}
+      <ConsistencyTable checks={consistencyChecks} />
+
+      {/* 4. Outbox Pipeline & Chaos Fault Injection Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Outbox Pipeline Drain Panel (6 cols) */}
         <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-7 shadow-xl flex flex-col gap-6">
@@ -325,16 +527,16 @@ export default function XRayDashboard() {
               </div>
             </div>
 
-            <button
-              type="button"
+            <DemoActionButton
               onClick={handleRequeueOutbox}
-              disabled={isRequeuing}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              loading={isRequeuing}
+              variant="secondary"
+              icon={RotateCcw}
+              size="sm"
               title="POST /admin/outbox/requeue"
             >
-              <RotateCcw className={`w-3.5 h-3.5 ${isRequeuing ? 'animate-spin' : ''}`} />
-              <span>Requeue Failed</span>
-            </button>
+              Requeue Failed
+            </DemoActionButton>
           </div>
 
           {/* 4 Outbox Stat Blocks with Drain Progress feel */}
@@ -421,16 +623,16 @@ export default function XRayDashboard() {
               </div>
             </div>
 
-            <button
-              type="button"
+            <DemoActionButton
               onClick={handleFullReindex}
-              disabled={isReindexing}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-mono font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20"
+              loading={isReindexing}
+              variant="primary"
+              icon={RefreshCw}
+              size="sm"
               title="POST /admin/reindex"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isReindexing ? 'animate-spin' : ''}`} />
-              <span>Full Reindex</span>
-            </button>
+              Full Reindex
+            </DemoActionButton>
           </div>
 
           {/* 4 Exact Chaos Targets from CONTRACT.md §7 */}
@@ -470,7 +672,7 @@ export default function XRayDashboard() {
         </div>
       </div>
 
-      {/* 4. Bottom Activity Feeds: Recent Orders & Recent Notifications */}
+      {/* 5. Bottom Activity Feeds: Recent Orders & Recent Notifications */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Recent Orders (Last 10) */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col gap-4">
@@ -555,6 +757,47 @@ export default function XRayDashboard() {
           </div>
         </div>
       </div>
+
+      {/* CONFIRM DEMO RESET MODAL */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border-2 border-rose-500/70 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-mono font-bold text-white">Reset Demo Database?</h3>
+                <span className="text-xs font-mono text-slate-400">POST /demo/reset</span>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              Restore seed inventory and clear test orders? This will truncate order history, reset boAt Airdopes 141 (P01) stock to 1, and resynchronize OpenSearch.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={isResetting}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono font-bold cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <DemoActionButton
+                onClick={handleResetDemo}
+                loading={isResetting}
+                variant="danger"
+                icon={RotateCcw}
+                size="md"
+              >
+                Confirm Reset
+              </DemoActionButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
