@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeSSE } from '../api/sse.js';
-import { CheckCircle2, Clock, Loader2, Radio, Sparkles } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, Radio, Sparkles, AlertTriangle } from 'lucide-react';
 
 const STAGES = [
   { id: 'COMMITTED', label: 'Committed to PostgreSQL', desc: 'Atomic transaction & inventory update' },
@@ -13,6 +13,7 @@ const STAGES = [
  * Reusable OrderTimeline component.
  * Subscribes to GET /orders/:id/events SSE endpoint.
  * Stages: COMMITTED -> OUTBOX_PUBLISHED -> NOTIFIED -> INDEXED.
+ * v1.2: Renders DUPLICATE_SKIPPED as an amber informational row (never as failure).
  * Tracks per-item INDEXED detail events.
  * Used by online checkout AND POS simulator.
  */
@@ -21,12 +22,14 @@ export default function OrderTimeline({
   totalItems = 1,
   onStageChange,
   onComplete,
+  onRawEvent,
   source = 'ONLINE',
 }) {
   const [completedStages, setCompletedStages] = useState(new Set());
   const [stageTimestamps, setStageTimestamps] = useState({});
   const [currentStage, setCurrentStage] = useState('COMMITTED');
   const [indexedProductIds, setIndexedProductIds] = useState(new Set());
+  const [duplicateEvents, setDuplicateEvents] = useState([]);
   const [sseStatus, setSseStatus] = useState('connecting');
 
   useEffect(() => {
@@ -39,8 +42,25 @@ export default function OrderTimeline({
         setSseStatus(status);
       },
       onMessage: (payload, eventName) => {
+        if (onRawEvent) {
+          onRawEvent({ eventName, payload, receivedAt: new Date().toISOString() });
+        }
+
         if (eventName === 'stage' || payload?.stage) {
           const { stage, at, detail } = payload;
+
+          // v1.2: DUPLICATE_SKIPPED is informational
+          if (stage === 'DUPLICATE_SKIPPED') {
+            setDuplicateEvents((prev) => [
+              ...prev,
+              {
+                at: at || new Date().toISOString(),
+                detail: detail || {},
+              },
+            ]);
+            if (onStageChange) onStageChange(stage, detail);
+            return;
+          }
 
           setStageTimestamps((prev) => ({
             ...prev,
@@ -69,16 +89,15 @@ export default function OrderTimeline({
         }
       },
       onError: (err) => {
-        // SSE will auto-reconnect
+        // SSE auto-reconnects
       },
     });
 
     return () => {
       unsubscribe();
     };
-  }, [orderId, onStageChange, onComplete]);
+  }, [orderId, onStageChange, onComplete, onRawEvent]);
 
-  // Stage order mapping
   const stageOrder = ['COMMITTED', 'OUTBOX_PUBLISHED', 'NOTIFIED', 'INDEXED'];
   const currentIndex = stageOrder.indexOf(currentStage);
 
@@ -135,90 +154,112 @@ export default function OrderTimeline({
           const isPosSkipped = source === 'POS_STORE' && s.id === 'NOTIFIED';
 
           return (
-            <div key={s.id} className="relative flex items-start gap-4 group">
-              {/* Vertical connector line */}
-              {index < STAGES.length - 1 && (
-                <div
-                  className={`absolute left-[19px] top-10 bottom-[-24px] w-0.5 transition-colors duration-500 ${
-                    completedStages.has(STAGES[index + 1]?.id)
-                      ? 'bg-emerald-500'
-                      : isDone
-                      ? 'bg-emerald-500/40'
-                      : 'bg-slate-800'
-                  }`}
-                />
-              )}
-
-              {/* Status Circle */}
-              <div className="relative z-10 shrink-0">
-                {isDone ? (
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                ) : isActive ? (
-                  <div className="w-10 h-10 rounded-full bg-indigo-500/20 border-2 border-indigo-400 text-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-pulse">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  </div>
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-slate-950 border-2 border-slate-800 text-slate-600 flex items-center justify-center">
-                    <span className="font-mono text-xs font-bold">{index + 1}</span>
-                  </div>
+            <React.Fragment key={s.id}>
+              <div className="relative flex items-start gap-4 group">
+                {/* Vertical connector line */}
+                {index < STAGES.length - 1 && (
+                  <div
+                    className={`absolute left-[19px] top-10 bottom-[-24px] w-0.5 transition-colors duration-500 ${
+                      completedStages.has(STAGES[index + 1]?.id)
+                        ? 'bg-emerald-500'
+                        : isDone
+                        ? 'bg-emerald-500/40'
+                        : 'bg-slate-800'
+                    }`}
+                  />
                 )}
-              </div>
 
-              {/* Content Block */}
-              <div className="flex-1 pt-1 flex flex-col gap-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-mono text-sm font-extrabold tracking-wide uppercase ${
-                        isDone
-                          ? 'text-emerald-300'
-                          : isActive
-                          ? 'text-indigo-300'
-                          : 'text-slate-500'
-                      }`}
-                    >
-                      {s.id}
-                    </span>
-                    <span className="text-xs text-slate-400 font-medium">
-                      — {s.label}
-                    </span>
-                  </div>
-
-                  {timestamp && (
-                    <span className="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
-                      {new Date(timestamp).toLocaleTimeString('en-IN', {
-                        hour12: false,
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })}
-                    </span>
+                {/* Status Circle */}
+                <div className="relative z-10 shrink-0">
+                  {isDone ? (
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                      <CheckCircle2 className="w-5 h-5" />
+                    </div>
+                  ) : isActive ? (
+                    <div className="w-10 h-10 rounded-full bg-indigo-500/20 border-2 border-indigo-400 text-indigo-400 flex items-center justify-center shadow-lg shadow-indigo-500/30 animate-pulse">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-950 border-2 border-slate-800 text-slate-600 flex items-center justify-center">
+                      <span className="font-mono text-xs font-bold">{index + 1}</span>
+                    </div>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-400">
-                  {isPosSkipped ? (
-                    <span className="text-amber-400 italic">
-                      Walk-in sale — no customer notification dispatched
-                    </span>
-                  ) : (
-                    s.desc
-                  )}
-                </p>
+                {/* Content Block */}
+                <div className="flex-1 pt-1 flex flex-col gap-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-mono text-sm font-extrabold tracking-wide uppercase ${
+                          isDone
+                            ? 'text-emerald-300'
+                            : isActive
+                            ? 'text-indigo-300'
+                            : 'text-slate-500'
+                        }`}
+                      >
+                        {s.id}
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">
+                        — {s.label}
+                      </span>
+                    </div>
 
-                {/* Multi-item INDEXED counter */}
-                {s.id === 'INDEXED' && isDone && (
-                  <div className="mt-1 flex items-center gap-2 text-xs font-mono text-emerald-400 font-semibold">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>
-                      Search documents synchronized ({Math.max(indexedProductIds.size, 1)} / {totalItems} item(s) indexed)
+                    {timestamp && (
+                      <span className="font-mono text-xs text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        {new Date(timestamp).toLocaleTimeString('en-IN', {
+                          hour12: false,
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-slate-400">
+                    {isPosSkipped ? (
+                      <span className="text-amber-400 italic">
+                        Walk-in sale — no customer notification dispatched
+                      </span>
+                    ) : (
+                      s.desc
+                    )}
+                  </p>
+
+                  {/* Multi-item INDEXED counter */}
+                  {s.id === 'INDEXED' && isDone && (
+                    <div className="mt-1 flex items-center gap-2 text-xs font-mono text-emerald-400 font-semibold">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>
+                        Search documents synchronized ({Math.max(indexedProductIds.size, 1)} / {totalItems} item(s) indexed)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* v1.2 Informational Row for DUPLICATE_SKIPPED after OUTBOX_PUBLISHED */}
+              {s.id === 'OUTBOX_PUBLISHED' && duplicateEvents.length > 0 && (
+                <div className="ml-14 my-1 p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-200 text-xs font-mono flex flex-col gap-1 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold flex items-center gap-1.5 text-amber-300">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Kafka redelivered — consumer skipped safely
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-amber-400">
+                      DUPLICATE_SKIPPED
                     </span>
                   </div>
-                )}
-              </div>
-            </div>
+                  {duplicateEvents.map((dup, i) => (
+                    <div key={i} className="text-[11px] text-amber-200/80 truncate">
+                      Event ID: <span className="font-bold">{dup.detail?.eventId || 'event-id'}</span> • Group: <span className="font-bold">{dup.detail?.consumerGroup || 'notifications'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </React.Fragment>
           );
         })}
       </div>

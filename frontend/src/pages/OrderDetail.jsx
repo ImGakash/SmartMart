@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useLocation, Link, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { apiGet } from '../api/client.js';
 import Price from '../components/Price.jsx';
 import OrderTimeline from '../components/OrderTimeline.jsx';
+import ProofPanel from '../components/ProofPanel.jsx';
+import ProofBadge from '../components/ProofBadge.jsx';
+import JsonViewer from '../components/JsonViewer.jsx';
 import {
-  Package,
   CheckCircle2,
   Mail,
   Search,
@@ -14,14 +16,15 @@ import {
   ArrowRight,
   AlertCircle,
   Copy,
-  ExternalLink,
-  Sparkles
+  Sparkles,
+  Radio,
+  Layers,
+  Inbox
 } from 'lucide-react';
 
 export default function OrderDetail() {
   const { id } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Check if this was a replayed idempotent request
   const isReplayed = Boolean(location.state?.replayed);
@@ -33,7 +36,12 @@ export default function OrderDetail() {
   const [isIndexedDone, setIsIndexedDone] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
-  // Fetch Order Details: GET /orders/:id
+  // Raw SSE log: newest first
+  const [rawEventLog, setRawEventLog] = useState([]);
+  const [duplicateSkippedCount, setDuplicateSkippedCount] = useState(0);
+  const [indexedCount, setIndexedCount] = useState(0);
+
+  // Fetch Order Details
   const fetchOrder = useCallback(async () => {
     try {
       const data = await apiGet(`/orders/${id}`);
@@ -45,7 +53,7 @@ export default function OrderDetail() {
     }
   }, [id]);
 
-  // Fetch Notifications: GET /orders/:id/notifications
+  // Fetch Notifications
   const fetchNotifications = useCallback(async () => {
     try {
       const notifs = await apiGet(`/orders/${id}/notifications`);
@@ -60,16 +68,24 @@ export default function OrderDetail() {
     fetchNotifications();
   }, [fetchOrder, fetchNotifications]);
 
-  // Handle stage events from OrderTimeline
-  const handleStageChange = useCallback((stage) => {
+  // Stage changes from OrderTimeline
+  const handleStageChange = useCallback((stage, detail) => {
     if (stage === 'NOTIFIED') {
-      // Re-fetch notifications when NOTIFIED stage arrives
       fetchNotifications();
     }
     if (stage === 'INDEXED') {
       setIsIndexedDone(true);
+      setIndexedCount((prev) => prev + 1);
+    }
+    if (stage === 'DUPLICATE_SKIPPED') {
+      setDuplicateSkippedCount((prev) => prev + 1);
     }
   }, [fetchNotifications]);
+
+  // Collect raw SSE events
+  const handleRawEvent = useCallback((eventObj) => {
+    setRawEventLog((prev) => [eventObj, ...prev]);
+  }, []);
 
   function copyOrderNumber() {
     if (order?.orderNumber) {
@@ -107,7 +123,7 @@ export default function OrderDetail() {
   }
 
   const items = order.items || [];
-  const primaryProductName = items[0]?.productId ? 'boAt' : 'item';
+  const primaryItemName = items[0]?.productId ? 'boAt' : 'item';
 
   return (
     <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8">
@@ -141,7 +157,7 @@ export default function OrderDetail() {
               Order Confirmed
             </span>
 
-            {/* Source Badge: ONLINE blue / POS_STORE amber per contract */}
+            {/* Source Badge */}
             {order.source === 'ONLINE' ? (
               <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
                 SOURCE: ONLINE
@@ -297,13 +313,14 @@ export default function OrderDetail() {
           </div>
         </div>
 
-        {/* Right Column: Live Order Timeline SSE (5 cols) */}
+        {/* Right Column: Live Order Timeline SSE & Proof Panel (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           <OrderTimeline
             orderId={id}
             totalItems={items.length}
             source={order.source}
             onStageChange={handleStageChange}
+            onRawEvent={handleRawEvent}
           />
 
           {/* Action After INDEXED Completes: "Verify in search" */}
@@ -328,6 +345,37 @@ export default function OrderDetail() {
               </Link>
             </div>
           )}
+
+          {/* ProofPanel: Notification Count, Duplicates-Skipped Counter, Raw Event Log */}
+          <ProofPanel
+            title="Async Event Stream Evidence"
+            service="Kafka"
+            action="GET /orders/:id/events"
+            proof="At-Least-Once Consumer Dedup"
+          >
+            <div className="grid grid-cols-3 gap-2 text-center font-mono">
+              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col">
+                <span className="text-[9px] uppercase text-slate-400 font-bold">Notifs</span>
+                <span className="text-xl font-bold text-indigo-400">{notifications.length}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col">
+                <span className="text-[9px] uppercase text-slate-400 font-bold">Indexed</span>
+                <span className="text-xl font-bold text-emerald-400">{indexedCount}</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col">
+                <span className="text-[9px] uppercase text-slate-400 font-bold">Dup Skip</span>
+                <span className="text-xl font-bold text-amber-400">{duplicateSkippedCount}</span>
+              </div>
+            </div>
+
+            {/* Raw SSE Event Log (Newest First) */}
+            <JsonViewer
+              data={rawEventLog.length > 0 ? rawEventLog : { status: 'Listening to SSE stream...' }}
+              title={`Raw SSE Event Log (${rawEventLog.length} events)`}
+              defaultOpen={rawEventLog.length > 0}
+              maxHeight="max-h-60"
+            />
+          </ProofPanel>
         </div>
       </div>
     </div>
