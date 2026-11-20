@@ -47,9 +47,14 @@ export function subscribeSSE(endpoint, callbacks = {}) {
 
       if (endpoint.includes('/events')) {
         // Order timeline stages simulation: COMMITTED -> OUTBOX_PUBLISHED -> NOTIFIED -> INDEXED
+        // plus v1.2 DUPLICATE_SKIPPED if duplicate order
+        const isDuplicateSimulation = endpoint.includes('replayed') || endpoint.includes('dup');
         const stages = [
           { stage: 'COMMITTED', delay: 400, detail: {} },
           { stage: 'OUTBOX_PUBLISHED', delay: 1200, detail: {} },
+          ...(isDuplicateSimulation
+            ? [{ stage: 'DUPLICATE_SKIPPED', delay: 1600, detail: { eventId: 'evt-dup-9001', consumerGroup: 'notifications' } }]
+            : []),
           { stage: 'NOTIFIED', delay: 2000, detail: { channel: 'SIMULATED_EMAIL' } },
           { stage: 'INDEXED', delay: 2800, detail: { productId: 'item-1' } },
         ];

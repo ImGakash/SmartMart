@@ -642,6 +642,46 @@ export function mockXRayBundle() {
         { name: 'idempotency_unique', status: 'PASS', detail: '0 duplicate idempotency keys' },
       ],
     },
+    reconciliation: (() => {
+      const rows = MOCK_PRODUCTS.map((p) => {
+        let pgTotalStock = 0;
+        const pgCitiesSet = new Set();
+        MOCK_STORES.forEach((s) => {
+          const qty = getStock(s.id, p.id);
+          pgTotalStock += qty;
+          if (qty > 0) pgCitiesSet.add(s.city);
+        });
+        const pgCities = Array.from(pgCitiesSet);
+
+        const isLagging = Boolean(chaosState['search-indexer']);
+        const osTotalStock = isLagging ? Math.max(0, pgTotalStock + 2) : pgTotalStock;
+        const osCities = isLagging ? ['Bengaluru', 'Mumbai'] : pgCities;
+
+        let status = 'PASS';
+        if (isLagging) {
+          status = 'SYNCING';
+        } else if (pgTotalStock !== osTotalStock) {
+          status = 'FAIL';
+        }
+
+        return {
+          productId: p.id,
+          name: p.name,
+          pgTotalStock,
+          osTotalStock,
+          pgCities,
+          osCities,
+          status,
+        };
+      });
+
+      const mismatches = rows.filter((r) => r.status !== 'PASS').length;
+      return {
+        checkedAt: new Date().toISOString(),
+        mismatches,
+        rows,
+      };
+    })(),
     chaos: { ...chaosState },
   };
 }
