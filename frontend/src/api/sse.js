@@ -1,4 +1,5 @@
 import { ApiError } from './client.js';
+import { mockXRayBundle } from './mock.js';
 
 /**
  * Robust EventSource helper with auto-reconnect, exponential backoff,
@@ -66,10 +67,9 @@ export function subscribeSSE(endpoint, callbacks = {}) {
         });
       } else if (endpoint.includes('/xray/stream')) {
         // Stream periodic xray metrics
-        mockInterval = setInterval(async () => {
+        mockInterval = setInterval(() => {
           if (isClosed) return;
           try {
-            const { mockXRayBundle } = await import('./mock.js');
             if (onMessage) onMessage(mockXRayBundle(), 'metrics');
           } catch (e) {
             // ignore

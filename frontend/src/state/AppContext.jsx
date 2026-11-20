@@ -115,6 +115,19 @@ export function AppProvider({ children }) {
         } catch (hErr) {
           if (isMounted) setHealthStatus({ pg: 'down', kafka: 'down', opensearch: 'down' });
         }
+
+        // Periodic health polling (every 15s)
+        const healthTimer = setInterval(async () => {
+          if (!isMounted) return;
+          try {
+            const h = await checkHealth();
+            if (isMounted) setHealthStatus(h);
+          } catch (e) {
+            if (isMounted) setHealthStatus({ pg: 'down', kafka: 'down', opensearch: 'down' });
+          }
+        }, 15000);
+
+        return () => clearInterval(healthTimer);
       } catch (err) {
         if (isMounted) {
           showToast({
