@@ -60,83 +60,103 @@ export default function Layout() {
               </div>
             </Link>
 
-            {/* Nav Links */}
+            {/* Nav Links: Customer & Demo Grouped */}
             <nav className="flex items-center gap-1 sm:gap-2">
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                    isActive
-                      ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 shadow-sm'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`
-                }
-              >
-                <Search className="w-4 h-4" />
-                <span>Storefront</span>
-              </NavLink>
+              <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80">
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    }`
+                  }
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Search</span>
+                </NavLink>
 
-              <NavLink
-                to="/cart"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 relative ${
-                    isActive
-                      ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                  }`
-                }
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Cart</span>
-                {cartCount > 0 && (
-                  <span className="font-mono text-xs font-bold px-1.5 py-0.2 rounded-full bg-indigo-500 text-white min-w-[18px] text-center">
-                    {cartCount}
-                  </span>
-                )}
-              </NavLink>
+                <NavLink
+                  to="/cart"
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 relative ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                    }`
+                  }
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>Cart</span>
+                  {cartCount > 0 && (
+                    <span className="font-mono text-[10px] font-black px-1.5 py-0.2 rounded-full bg-indigo-400 text-slate-950 min-w-[16px] text-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </NavLink>
+              </div>
 
-              <NavLink
-                to="/pos"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                    isActive
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
-                      : 'text-amber-300/80 hover:text-amber-200 hover:bg-amber-950/30'
-                  }`
-                }
-              >
-                <Terminal className="w-4 h-4 text-amber-400" />
-                <span>POS Simulator</span>
-              </NavLink>
+              <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
 
-              <NavLink
-                to="/race"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                    isActive
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
-                      : 'text-rose-300/80 hover:text-rose-200 hover:bg-rose-950/30'
-                  }`
-                }
-              >
-                <Zap className="w-4 h-4 text-rose-400" />
-                <span>Race Arena</span>
-              </NavLink>
+              <div className="flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80">
+                <NavLink
+                  to="/pos"
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
+                        : 'text-amber-300/80 hover:text-amber-200 hover:bg-amber-950/40'
+                    }`
+                  }
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  <span>POS Terminal</span>
+                </NavLink>
 
-              <NavLink
-                to="/xray"
-                className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                    isActive
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                      : 'text-emerald-300/80 hover:text-emerald-200 hover:bg-emerald-950/30'
-                  }`
-                }
-              >
-                <Activity className="w-4 h-4 text-emerald-400" />
-                <span>X-Ray 10/10</span>
-              </NavLink>
+                <NavLink
+                  to="/race"
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-rose-500 text-white shadow-sm font-black'
+                        : 'text-rose-300/80 hover:text-rose-200 hover:bg-rose-950/40'
+                    }`
+                  }
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Race Arena</span>
+                </NavLink>
+
+                <NavLink
+                  to="/xray"
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-emerald-500 text-slate-950 shadow-sm font-black'
+                        : 'text-emerald-300/80 hover:text-emerald-200 hover:bg-emerald-950/40'
+                    }`
+                  }
+                >
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Control Tower</span>
+                </NavLink>
+
+                <NavLink
+                  to="/demo"
+                  className={({ isActive }) =>
+                    `px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-sky-500 text-slate-950 shadow-sm font-black'
+                        : 'text-sky-300/80 hover:text-sky-200 hover:bg-sky-950/40'
+                    }`
+                  }
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Runbook</span>
+                </NavLink>
+              </div>
             </nav>
           </div>
 
