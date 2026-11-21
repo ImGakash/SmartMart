@@ -1,73 +1,111 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Terminal, Clock, Store } from 'lucide-react';
+import { Receipt, Clock, Store, PlusCircle, RefreshCw } from 'lucide-react';
 import { useApp } from '../../state/AppContext.jsx';
 import RoleSwitcher from '../RoleSwitcher.jsx';
 import ToastContainer from '../Toast.jsx';
 
 export default function StoreShell() {
-  const { selectedStore, toasts, dismissToast } = useApp();
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const { selectedStore, setSelectedStore, stores, toasts, dismissToast } = useApp();
+  const [currentDateTime, setCurrentDateTime] = useState('');
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
+    function updateClock() {
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+      const timeStr = now.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      setCurrentDateTime(`${dateStr} · ${timeStr}`);
+    }
+
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
   }, []);
 
+  function handleTriggerNewBill() {
+    window.dispatchEvent(new CustomEvent('pos:new-bill'));
+  }
+
   return (
-    <div className="min-h-screen bg-[#050811] text-[#FBBF24] flex flex-col font-mono selection:bg-amber-500 selection:text-black">
-      {/* High-contrast Terminal Header */}
-      <header className="sticky top-0 z-40 bg-[#070B16] border-b-2 border-amber-500/40 px-4 lg:px-8 py-3 transition-colors shadow-lg shadow-black/80">
-        <div className="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-4">
-          {/* Left: Terminal Identity */}
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-black shadow-md shadow-amber-500/30">
-              <Terminal className="w-5 h-5 stroke-[2.5]" />
-            </div>
-
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-black text-lg text-white tracking-wider">
-                  SMARTMART <span className="text-amber-400">POS TERMINAL</span>
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase">
-                  Cashier Mode
-                </span>
+    <div className="min-h-screen bg-[#F4F6F8] text-[#1F2937] flex flex-col font-sans relative z-10 selection:bg-blue-600 selection:text-white">
+      {/* Light Professional Billing Header (Vyapar / Busy / myBillBook style) */}
+      <header className="sticky top-0 z-40 bg-white border-b border-[#E2E8F0] px-4 lg:px-6 py-2.5 shadow-2xs transition-colors no-print">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+          {/* Left: Store App Identity & Store Selector */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-[6px] bg-[#1D4ED8] text-white flex items-center justify-center shadow-xs">
+                <Receipt className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Store className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-amber-300 font-bold">
-                  {selectedStore?.storeCode || 'BLR-01'} · {selectedStore?.storeName || 'Store'} ({selectedStore?.city || 'Bengaluru'})
-                </span>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-base text-[#111827] tracking-tight">
+                    SmartMart <span className="text-[#1D4ED8]">Billing POS</span>
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-blue-50 text-[#1D4ED8] border border-blue-100 uppercase">
+                    Counter Cashier
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Menu: Terminal only */}
-            <nav className="ml-4 pl-4 border-l border-slate-800 hidden sm:flex items-center">
-              <NavLink
-                to="/pos"
-                className="px-3 py-1.5 rounded-lg bg-amber-500 text-black font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-sm shadow-amber-500/30"
+            {/* Active Branch / Store Selector Dropdown */}
+            <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[6px] px-2.5 py-1 text-xs text-[#1F2937]">
+              <Store className="w-3.5 h-3.5 text-[#1D4ED8] shrink-0" />
+              <span className="text-[11px] text-[#6B7280] font-medium hidden sm:inline">Store:</span>
+              <select
+                value={selectedStore?.id || ''}
+                onChange={(e) => {
+                  const found = stores.find((s) => s.id === e.target.value);
+                  if (found) setSelectedStore(found);
+                }}
+                className="bg-transparent font-semibold text-xs text-[#1F2937] focus:outline-none cursor-pointer pr-1"
+                aria-label="Select Store"
               >
-                <Terminal className="w-3.5 h-3.5" />
-                <span>Register</span>
-              </NavLink>
-            </nav>
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id} className="bg-white text-[#1F2937]">
+                    {s.storeCode} — {s.storeName} ({s.city})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Right: Live Clock & Switch Role */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-black/60 border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-amber-300 shadow-inner">
-              <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span className="font-bold tracking-widest">{currentTime}</span>
+          {/* Right: Live Clock, "New Bill" Button, Switch Role */}
+          <div className="flex items-center gap-3">
+            {/* Live Indian Standard Time & Date */}
+            <div className="hidden md:flex items-center gap-1.5 text-xs font-mono text-[#6B7280] bg-[#F8FAFC] px-2.5 py-1 rounded-[6px] border border-[#E2E8F0]">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              <span>{currentDateTime}</span>
             </div>
 
-            <RoleSwitcher className="border-amber-500/40 hover:border-amber-400 text-amber-300 hover:text-white bg-black/70" />
+            {/* Quick Action: New Bill */}
+            <button
+              type="button"
+              onClick={handleTriggerNewBill}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-white border border-[#E2E8F0] hover:bg-slate-50 text-[#1F2937] font-medium text-xs transition-colors cursor-pointer shadow-2xs"
+              title="Start a fresh bill"
+            >
+              <PlusCircle className="w-3.5 h-3.5 text-[#16A34A]" />
+              <span>New Bill</span>
+            </button>
+
+            {/* Switch Role Button */}
+            <RoleSwitcher className="!bg-white hover:!bg-slate-50 !text-[#1F2937] !border-[#E2E8F0] !shadow-2xs text-xs" />
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col relative z-10 bg-[#050811]">
+      {/* Main Billing Content Area */}
+      <main className="flex-1 flex flex-col max-w-[1600px] w-full mx-auto px-4 py-4 md:py-5">
         <Outlet />
       </main>
 

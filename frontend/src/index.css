@@ -127,3 +127,38 @@ body::after {
   background: var(--ink-700);
   border-radius: 3px;
 }
+
+/* Dedicated POS receipt printing CSS (thermal 80mm / clean local shop invoice) */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  body::before,
+  body::after {
+    display: none !important;
+  }
+  header,
+  nav,
+  aside,
+  button,
+  .no-print {
+    display: none !important;
+  }
+  #printable-pos-receipt {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    padding: 10px !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+  }
+}
+
