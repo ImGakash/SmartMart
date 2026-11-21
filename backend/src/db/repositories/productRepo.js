@@ -10,9 +10,35 @@ async function getProducts({ category, limit = 50, offset = 0 } = {}) {
   params.push(limit, offset);
   query += ` ORDER BY name LIMIT $${params.length - 1} OFFSET $${params.length}`;
   const res = await pool.query(query, params);
+  if (res.rows.length === 0) return [];
+
+  const productIds = res.rows.map((r) => r.id);
+  const availRes = await pool.query(
+    `SELECT i.product_id, i.store_id AS "storeId", s.store_code AS "storeCode", s.store_name AS "storeName", s.city, i.stock_qty AS "stockQty"
+     FROM inventory i
+     JOIN stores s ON s.id = i.store_id
+     WHERE i.product_id = ANY($1::uuid[])
+     ORDER BY s.store_code`,
+    [productIds]
+  );
+  const availMap = new Map();
+  availRes.rows.forEach((r) => {
+    if (!availMap.has(r.product_id)) {
+      availMap.set(r.product_id, []);
+    }
+    availMap.get(r.product_id).push({
+      storeId: r.storeId,
+      storeCode: r.storeCode,
+      storeName: r.storeName,
+      city: r.city,
+      stockQty: Number(r.stockQty)
+    });
+  });
+
   return res.rows.map((r) => ({
     ...r,
-    pricePaise: Number(r.pricePaise)
+    pricePaise: Number(r.pricePaise),
+    availability: availMap.get(r.id) || []
   }));
 }
 

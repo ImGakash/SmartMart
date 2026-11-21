@@ -1,5 +1,6 @@
 // In-memory chaos switches per CONTRACT.md §7
 const chaosState = {
+  'relay': false,
   'relay-after-publish': false,
   'relay-after-claim': false,
   'notifications': false,

@@ -104,21 +104,24 @@ router.get('/orders/:id/events', async (req, res, next) => {
     // Initial stage event since order is in DB
     const committedEvent = {
       stage: 'COMMITTED',
-      at: order.createdAt,
+      at: order.createdAt instanceof Date ? order.createdAt.toISOString() : order.createdAt,
       detail: { orderId: order.id, source: order.source }
     };
     res.write(`event: stage\ndata: ${JSON.stringify(committedEvent)}\n\n`);
 
-    // Listen for live stage transitions from event bus
-    const onStage = (data) => {
-      res.write(`event: stage\ndata: ${JSON.stringify(data)}\n\n`);
-    };
+    // Heartbeat every 15s per CONTRACT.md §11
+    const heartbeat = setInterval(() => {
+      res.write(': heartbeat\n\n');
+    }, 15000);
 
-    const eventKey = `order:${orderId}`;
-    bus.on(eventKey, onStage);
+    // Listen for live stage transitions from event bus
+    const unsubscribe = bus.subscribeOrder(orderId, (data) => {
+      res.write(`event: stage\ndata: ${JSON.stringify(data)}\n\n`);
+    });
 
     req.on('close', () => {
-      bus.off(eventKey, onStage);
+      clearInterval(heartbeat);
+      unsubscribe();
     });
   } catch (err) {
     next(err);

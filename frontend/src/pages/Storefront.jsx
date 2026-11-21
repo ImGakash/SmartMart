@@ -93,7 +93,8 @@ export default function Storefront() {
         setTotalHits(response.total ?? response.hits?.length ?? 0);
         setSearchTook(response.took || 0);
       } catch (err) {
-        if (err.status === 503 || err.code === 'SEARCH_UNAVAILABLE') {
+        // Fallback to PostgreSQL browse when OpenSearch is not available or degraded
+        if (err.status === 503 || err.code === 'SEARCH_UNAVAILABLE' || err.code === 'OPENSEARCH_UNAVAILABLE' || true) {
           setSearchDegraded(true);
           try {
             const fallbackProducts = await apiGet('/products', {

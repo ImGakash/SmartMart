@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('../db');
+const { kafkaHealthy } = require('../events/kafka');
 
 const catalogRouter = require('./routes/catalog');
 const cartRouter = require('./routes/cart');
@@ -25,10 +26,17 @@ app.get('/health', async (req, res) => {
     pgStatus = 'down';
   }
 
-  // Pipeline not built yet honestly reported per prompt
+  let kafkaStatus = 'down';
+  try {
+    const isKafkaUp = await kafkaHealthy();
+    kafkaStatus = isKafkaUp ? 'up' : 'down';
+  } catch (err) {
+    kafkaStatus = 'down';
+  }
+
   res.json({
     pg: pgStatus,
-    kafka: 'down',
+    kafka: kafkaStatus,
     opensearch: 'down'
   });
 });

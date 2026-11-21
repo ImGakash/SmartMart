@@ -48,10 +48,9 @@ router.post('/checkout', async (req, res, next) => {
     });
 
     // Emit COMMITTED stage to SSE bus
-    bus.emit(`order:${result.order.id}`, {
-      stage: 'COMMITTED',
-      at: new Date().toISOString(),
-      detail: { orderId: result.order.id, replayed: result.replayed }
+    bus.emitStage(result.order.id, 'COMMITTED', {
+      orderId: result.order.id,
+      replayed: result.replayed
     });
 
     const statusCode = result.replayed ? 200 : 201;
