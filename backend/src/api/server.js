@@ -1,9 +1,12 @@
 const express = require('express');
 const { placeOrderAtomic, recordPosSale, getStores, getCustomers, getProducts } = require('../db');
 const { randomUUID } = require('crypto');
+const { ping } = require('../search/client');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 app.use(express.json());
+app.use('/api', searchRoutes);
 
 // GET /stores
 app.get('/stores', async (req, res) => {
@@ -88,8 +91,10 @@ app.post('/pos/sale', async (req, res) => {
 
 const PORT = process.env.PORT || 4000;
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
+    // OpenSearch health check in startup sequence (after Kafka connects)
+    await ping();
   });
 }
 
