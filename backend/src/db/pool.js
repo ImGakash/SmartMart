@@ -59,6 +59,11 @@ const pool = new pg.Pool({
   ssl
 });
 
+// Handle idle client network drops/resets to prevent unhandled process crash
+pool.on('error', (err) => {
+  console.warn('Unexpected error on idle PostgreSQL client in pool:', err.message);
+});
+
 async function withTransaction(fn) {
   const client = await pool.connect();
   try {
