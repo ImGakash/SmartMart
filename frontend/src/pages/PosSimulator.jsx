@@ -6,6 +6,7 @@ import Price from '../components/Price.jsx';
 import StockBadge from '../components/StockBadge.jsx';
 import SyncBadge from '../components/SyncBadge.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
+import ProductImage from '../components/ProductImage.jsx';
 import {
   Search,
   Plus,
@@ -412,28 +413,37 @@ export default function PosSimulator() {
                         inStock ? 'hover:bg-blue-50/50' : 'opacity-60 bg-slate-50 cursor-not-allowed'
                       }`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[11px] text-[#6B7280] font-semibold">
-                            {p.sku}
-                          </span>
-                          <span className="text-[10px] uppercase font-semibold text-[#6B7280]">
-                            {p.category}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-medium text-[#1F2937] truncate mt-0.5">
-                          {p.name}
-                        </h4>
-                        <div className="flex items-center gap-3 mt-1 text-xs">
-                          {inStock ? (
-                            <span className="text-[11px] font-medium text-[#16A34A]">
-                              In Stock: <strong>{stock}</strong>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <ProductImage
+                          src={p.imageUrl}
+                          alt={p.name}
+                          category={p.category}
+                          containerClassName="w-10 h-10 rounded-[6px] border border-slate-100 p-0.5 shrink-0 bg-white"
+                          loading="lazy"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[11px] text-[#6B7280] font-semibold">
+                              {p.sku}
                             </span>
-                          ) : (
-                            <span className="text-[11px] font-medium text-[#DC2626]">
-                              Out of Stock
+                            <span className="text-[10px] uppercase font-semibold text-[#6B7280]">
+                              {p.category}
                             </span>
-                          )}
+                          </div>
+                          <h4 className="text-sm font-medium text-[#1F2937] truncate mt-0.5">
+                            {p.name}
+                          </h4>
+                          <div className="flex items-center gap-3 mt-1 text-xs">
+                            {inStock ? (
+                              <span className="text-[11px] font-medium text-[#16A34A]">
+                                In Stock: <strong>{stock}</strong>
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-medium text-[#DC2626]">
+                                Out of Stock
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -512,10 +522,21 @@ export default function PosSimulator() {
                         <tr key={item.productId} className="hover:bg-slate-50/60">
                           <td className="py-2.5 px-3 text-[#6B7280] font-mono">{idx + 1}</td>
                           <td className="py-2.5 px-3">
-                            <span className="font-medium text-[#1F2937] block leading-snug">
-                              {item.name}
-                            </span>
-                            <span className="text-[10px] font-mono text-[#6B7280]">{item.sku}</span>
+                            <div className="flex items-center gap-2">
+                              <ProductImage
+                                src={item.imageUrl}
+                                alt={item.name}
+                                category={item.category}
+                                containerClassName="w-7 h-7 rounded border border-slate-100 shrink-0 hidden sm:flex"
+                                loading="lazy"
+                              />
+                              <div>
+                                <span className="font-medium text-[#1F2937] block leading-snug">
+                                  {item.name}
+                                </span>
+                                <span className="text-[10px] font-mono text-[#6B7280]">{item.sku}</span>
+                              </div>
+                            </div>
                           </td>
                           <td className="py-2.5 px-3">
                             <div className="flex items-center justify-center border border-[#E2E8F0] rounded-[4px] bg-white overflow-hidden max-w-[80px] mx-auto">

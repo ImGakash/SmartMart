@@ -5,6 +5,7 @@ import { apiGet, apiPatch, apiDelete, apiPost } from '../api/client.js';
 import Price from '../components/Price.jsx';
 import ProofBadge from '../components/ProofBadge.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
+import ProductImage from '../components/ProductImage.jsx';
 import {
   ShoppingCart,
   Trash2,
@@ -256,15 +257,12 @@ export default function CartCheckout() {
                 return (
                   <div key={item.productId} className="p-4 flex gap-4 items-start">
                     {/* Item Thumbnail on neutral podium */}
-                    <div className="w-20 h-20 rounded-lg border border-slate-100 bg-slate-50/70 p-1 shrink-0 flex items-center justify-center">
-                      <img
+                    <div className="w-20 h-20 rounded-lg border border-slate-100 bg-slate-50/70 p-1 shrink-0 flex items-center justify-center overflow-hidden">
+                      <ProductImage
                         src={item.imageUrl}
                         alt={item.name}
-                        className="max-h-full max-w-full object-contain"
-                        onError={(e) => {
-                          e.target.src =
-                            'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&auto=format&fit=crop&q=80';
-                        }}
+                        category={item.category}
+                        loading="lazy"
                       />
                     </div>
 

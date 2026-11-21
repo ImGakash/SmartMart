@@ -6,6 +6,7 @@ import Price from '../components/Price.jsx';
 import StockBadge from '../components/StockBadge.jsx';
 import SyncBadge from '../components/SyncBadge.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
+import ProductImage from '../components/ProductImage.jsx';
 import {
   ArrowLeft,
   Store,
@@ -219,15 +220,12 @@ export default function ProductDetail() {
         {/* Left Column (5 cols): Image Gallery & Action Buttons */}
         <div className="md:col-span-5 flex flex-col gap-4">
           {/* Main Image Box on neutral podium */}
-          <div className="border border-slate-200/80 rounded-xl p-4 flex items-center justify-center bg-slate-50/70 aspect-square">
-            <img
+          <div className="border border-slate-200/80 rounded-xl p-4 flex items-center justify-center bg-slate-50/70 aspect-square overflow-hidden">
+            <ProductImage
               src={product.imageUrl}
               alt={product.name}
-              className="max-h-full max-w-full object-contain"
-              onError={(e) => {
-                e.target.src =
-                  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80';
-              }}
+              category={product.category}
+              loading="eager"
             />
           </div>
 

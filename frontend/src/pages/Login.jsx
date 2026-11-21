@@ -29,6 +29,7 @@ export default function Login() {
     setSelectedStore,
     setSelectedCustomer,
     setRole,
+    enterAsGuest,
     healthStatus: appHealthStatus,
   } = useApp();
 
@@ -130,6 +131,14 @@ export default function Login() {
     navigate('/xray');
   }
 
+  // BUTTON 4 — Continue as Guest
+  function handleEnterGuest() {
+    if (navigatingRole) return;
+    setNavigatingRole('guest');
+    enterAsGuest();
+    navigate('/');
+  }
+
   return (
     <div className="min-h-screen w-full flex flex-col justify-between bg-white text-[#212121] font-sans relative z-10 selection:bg-indigo-600 selection:text-white">
       {/* Top Header Bar with Top-Left SmartMart Logo exactly like other pages */}
@@ -166,7 +175,7 @@ export default function Login() {
             <MapPin className="w-3.5 h-3.5 text-indigo-600" />
             <span>Retail Stores Across All Metro Cities</span>
           </div>
-          <h1 className="text-[26px] sm:text-[32px] font-bold text-slate-900 tracking-tight">
+          <h1 className="text-[20px] font-bold text-slate-900 tracking-tight">
             SmartMart Omnichannel Network
           </h1>
           <p className="text-[14px] text-slate-500 mt-2 max-w-lg leading-relaxed">
@@ -288,6 +297,22 @@ export default function Login() {
               <span>Enter Operations Console (Admin)</span>
             </button>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-slate-200 my-3" />
+
+          {/* BUTTON 4 — Continue as Guest */}
+          <button
+            type="button"
+            onClick={handleEnterGuest}
+            disabled={Boolean(navigatingRole)}
+            className="w-full h-[36px] px-4 rounded-[6px] border border-slate-200 bg-transparent hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {navigatingRole === 'guest' ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2 shrink-0" />
+            ) : null}
+            <span>Continue as Guest</span>
+          </button>
 
           {/* Live System Status Strip */}
           <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center">

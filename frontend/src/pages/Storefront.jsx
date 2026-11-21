@@ -4,6 +4,7 @@ import { useApp } from '../state/AppContext.jsx';
 import { apiGet, apiPost } from '../api/client.js';
 import Price from '../components/Price.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
+import ProductImage from '../components/ProductImage.jsx';
 import {
   Search,
   AlertTriangle,
@@ -336,14 +337,12 @@ export default function Storefront() {
               >
                 {/* Product Image on light podium */}
                 <div className="w-full aspect-square rounded-lg bg-slate-50/70 flex items-center justify-center mb-2.5 p-2 overflow-hidden">
-                  <img
+                  <ProductImage
                     src={product.imageUrl}
                     alt={product.name}
-                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
-                    onError={(e) => {
-                      e.target.src =
-                        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=80';
-                    }}
+                    category={product.category}
+                    className="group-hover:scale-105 transition-transform duration-200"
+                    loading="lazy"
                   />
                 </div>
 

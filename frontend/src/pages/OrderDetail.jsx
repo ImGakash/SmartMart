@@ -5,6 +5,7 @@ import Price from '../components/Price.jsx';
 import OrderTimeline from '../components/OrderTimeline.jsx';
 import ProofBadge from '../components/ProofBadge.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
+import ProductImage from '../components/ProductImage.jsx';
 import {
   CheckCircle2,
   Mail,
@@ -293,15 +294,12 @@ export default function OrderDetail() {
 
           {items.map((item, idx) => (
             <div key={idx} className="p-4 flex gap-4 items-center">
-              <div className="w-16 h-16 rounded-lg border border-slate-100 p-1 bg-slate-50/70 shrink-0 flex items-center justify-center">
-                <img
+              <div className="w-16 h-16 rounded-lg border border-slate-100 p-1 bg-slate-50/70 shrink-0 flex items-center justify-center overflow-hidden">
+                <ProductImage
                   src={item.imageUrl}
                   alt={item.name}
-                  className="max-h-full max-w-full object-contain"
-                  onError={(e) => {
-                    e.target.src =
-                      'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&auto=format&fit=crop&q=80';
-                  }}
+                  category={item.category}
+                  loading="lazy"
                 />
               </div>
 
