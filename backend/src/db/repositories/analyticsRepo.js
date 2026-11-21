@@ -310,7 +310,7 @@ async function resetDemo() {
         stockQty = s.storeCode === 'BLR-01' ? 8 : 4;
       } else {
         const seedNum = (parseInt(p.id.slice(-2), 10) + parseInt(s.storeCode.slice(-1), 10)) % 7;
-        stockQty = seedNum === 0 ? 0 : seedNum * 3;
+        stockQty = (s.storeCode === 'BLR-01') ? (seedNum === 0 ? 6 : Math.max(6, seedNum * 3)) : (seedNum === 0 ? 0 : seedNum * 3);
       }
 
       invValues.push(`($${invIdx}, $${invIdx + 1}, $${invIdx + 2})`);

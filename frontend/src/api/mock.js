@@ -90,7 +90,7 @@ const RAW_PRODUCTS = [
     brand: 'boAt',
     category: 'Audio',
     pricePaise: 129900,
-    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80',
+    imageUrl: '/products/boat-airdopes-141.jpg',
     description: 'boAt Airdopes 141 true wireless earbuds with 42H playtime, Beast mode for gaming, ENx tech, fast charge.',
     stock: { 'BLR-01': 1, 'BLR-02': 0, 'MUM-01': 0, 'DEL-01': 0, 'HYD-01': 0, 'CHE-01': 0 }
   },
@@ -376,7 +376,7 @@ const RAW_PRODUCTS = [
     brand: 'Realme',
     category: 'Audio',
     pricePaise: 499900,
-    imageUrl: 'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80',
+    imageUrl: '/products/boat-airdopes-141.jpg',
     description: '50dB active noise cancellation, Hi-Res audio certified, 11mm bass driver + 6mm planar tweeter.',
     stock: { 'BLR-01': 12, 'BLR-02': 9, 'MUM-01': 15, 'DEL-01': 14, 'HYD-01': 10, 'CHE-01': 7 }
   },

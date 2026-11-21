@@ -22,8 +22,10 @@ export const PRODUCT_IMAGES = {
   laptop:       'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600&auto=format&fit=crop&q=80',
 
   // Audio
-  earbuds:      'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80',
-  earbuds2:     'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&auto=format&fit=crop&q=80',
+  boatAirdopes:       '/products/boat-airdopes-141.jpg',
+  boatAirdopesRemote: 'https://www.boat-lifestyle.com/cdn/shop/files/AD141-FI_Black06_600x.jpg?v=1722247855',
+  earbuds:            '/products/boat-airdopes-141.jpg',
+  earbuds2:           'https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&auto=format&fit=crop&q=80',
   headphones:   'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80',
   speaker:      'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600&auto=format&fit=crop&q=80',
   soundbar:     'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=600&auto=format&fit=crop&q=80',
@@ -209,6 +211,13 @@ export function resolveBestImage(src, sku, category, name = '') {
     }
     if (
       normName.includes('airdopes') ||
+      normName.includes('141') ||
+      cleanSku === 'SM-AUD-001' ||
+      cleanSku === 'SM-AUD-01'
+    ) {
+      return PRODUCT_IMAGES.boatAirdopes;
+    }
+    if (
       normName.includes('earbuds') ||
       normName.includes('buds') ||
       normName.includes('earphone')
@@ -386,6 +395,10 @@ export default function ProductImage({
   }, [src, sku, category, productName, fallbackSrc]);
 
   function handleError() {
+    if (currentSrc === PRODUCT_IMAGES.boatAirdopes) {
+      setCurrentSrc(PRODUCT_IMAGES.boatAirdopesRemote);
+      return;
+    }
     if (currentSrc !== fallbackSrc) {
       setCurrentSrc(fallbackSrc);
       setHasError(true);
