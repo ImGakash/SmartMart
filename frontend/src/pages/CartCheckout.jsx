@@ -262,6 +262,7 @@ export default function CartCheckout() {
                         src={item.imageUrl}
                         alt={item.name}
                         category={item.category}
+                        sku={item.sku}
                         loading="lazy"
                       />
                     </div>

@@ -225,6 +225,7 @@ export default function ProductDetail() {
               src={product.imageUrl}
               alt={product.name}
               category={product.category}
+              sku={product.sku}
               loading="eager"
             />
           </div>
