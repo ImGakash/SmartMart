@@ -169,21 +169,21 @@ export default function ProductDetail() {
 
   if (loading) {
     return (
-      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-16 flex flex-col items-center justify-center gap-3">
-        <div className="w-8 h-8 border-3 border-[#2874F0] border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs text-[#878787]">Loading product details & inventory...</span>
+      <div className="bg-white border border-slate-200/80 rounded-xl p-16 flex flex-col items-center justify-center gap-3 shadow-2xs">
+        <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-slate-500">Loading product details & inventory...</span>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-12 text-center flex flex-col items-center justify-center gap-3">
-        <h2 className="text-xl font-semibold text-[#212121]">Product Not Found</h2>
-        <p className="text-xs text-[#878787] max-w-md">{error || 'Unable to retrieve product details.'}</p>
+      <div className="bg-white border border-slate-200/80 rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3 shadow-2xs">
+        <h2 className="text-xl font-semibold text-slate-900">Product Not Found</h2>
+        <p className="text-xs text-slate-500 max-w-md">{error || 'Unable to retrieve product details.'}</p>
         <Link
           to="/"
-          className="px-4 py-2 bg-[#2874F0] text-white rounded-[6px] text-xs font-medium hover:bg-[#1C5BC8] transition-colors"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors"
         >
           Return to Storefront
         </Link>
@@ -203,23 +203,23 @@ export default function ProductDetail() {
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb row */}
-      <div className="flex items-center gap-2 text-xs text-[#878787]">
-        <Link to="/" className="hover:text-[#2874F0] flex items-center gap-1">
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <Link to="/" className="hover:text-indigo-600 flex items-center gap-1 font-medium">
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Home</span>
+          <span>Catalog</span>
         </Link>
         <span>/</span>
-        <span className="text-[#212121]">{product.category}</span>
+        <span className="text-slate-700">{product.category}</span>
         <span>/</span>
-        <span className="text-[#878787]">{product.brand}</span>
+        <span className="text-slate-400">{product.brand}</span>
       </div>
 
-      {/* Main Flipkart-Style 2-Column Product Container */}
-      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-4 md:p-6 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-6">
+      {/* Main 2-Column Product Container */}
+      <div className="bg-white border border-slate-200/80 rounded-xl p-4 md:p-6 shadow-2xs grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Column (5 cols): Image Gallery & Action Buttons */}
         <div className="md:col-span-5 flex flex-col gap-4">
-          {/* Main Image Box */}
-          <div className="border border-[#E0E0E0] rounded-[6px] p-4 flex items-center justify-center bg-white aspect-square">
+          {/* Main Image Box on neutral podium */}
+          <div className="border border-slate-200/80 rounded-xl p-4 flex items-center justify-center bg-slate-50/70 aspect-square">
             <img
               src={product.imageUrl}
               alt={product.name}
@@ -231,26 +231,26 @@ export default function ProductDetail() {
             />
           </div>
 
-          {/* Flipkart Action Buttons (Side by Side) */}
+          {/* Action Buttons: Add to Cart & Buy Now */}
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={handleAddToCart}
               disabled={isAdding || !inStock}
-              className="h-[40px] px-3 rounded-[6px] bg-[#FF9F00] hover:bg-[#F29400] text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]"
+              className="h-[42px] px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs shadow-indigo-100 active:scale-[0.98]"
             >
               <ShoppingCart className="w-4 h-4" />
-              <span>{isAdding ? 'Adding...' : 'ADD TO CART'}</span>
+              <span>{isAdding ? 'Adding...' : 'Add to Cart'}</span>
             </button>
 
             <button
               type="button"
               onClick={handleBuyNow}
               disabled={isBuying || !inStock}
-              className="h-[40px] px-3 rounded-[6px] bg-[#FB641B] hover:bg-[#E55510] text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]"
+              className="h-[42px] px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-[0.98]"
             >
               <Zap className="w-4 h-4" />
-              <span>{isBuying ? 'Processing...' : 'BUY NOW'}</span>
+              <span>{isBuying ? 'Processing...' : 'Buy Now'}</span>
             </button>
           </div>
         </div>
@@ -258,58 +258,55 @@ export default function ProductDetail() {
         {/* Right Column (7 cols): Title, Price, Description, Store Matrix */}
         <div className="md:col-span-7 flex flex-col gap-4">
           <div>
-            <span className="text-xs font-semibold text-[#878787] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wider">
               {product.brand}
             </span>
-            <h1 className="text-xl font-semibold text-[#212121] leading-tight mt-0.5">
+            <h1 className="text-xl font-bold text-slate-900 leading-tight mt-0.5">
               {product.name}
             </h1>
           </div>
 
           {/* Rating Pill */}
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 bg-[#388E3C] text-white text-xs font-bold px-2 py-0.5 rounded-[4px]">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/80 text-xs font-bold px-2.5 py-0.5 rounded-full">
               <span>4.3</span>
-              <Star className="w-3 h-3 fill-current" />
+              <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
             </span>
-            <span className="text-xs text-[#878787]">
-              1,248 Ratings & 182 Reviews
+            <span className="text-xs text-slate-500">
+              Verified Omnichannel Inventory
             </span>
           </div>
 
           {/* Price Block */}
-          <div className="flex flex-col gap-1 border-y border-[#E0E0E0] py-3">
-            <span className="text-[11px] font-semibold text-[#388E3C] uppercase tracking-wider">
-              Special Price
-            </span>
+          <div className="flex flex-col gap-1 border-y border-slate-100 py-3">
             <div className="flex items-baseline gap-2.5">
-              <Price paise={product.pricePaise} className="text-xl font-bold text-[#212121]" />
-              <Price paise={mrp} className="text-sm text-[#878787] line-through font-normal" />
-              <span className="text-sm font-bold text-[#388E3C]">
+              <Price paise={product.pricePaise} className="text-xl font-extrabold text-slate-900" />
+              <Price paise={mrp} className="text-sm text-slate-400 line-through font-normal" />
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
                 {discountPct}% off
               </span>
             </div>
-            <span className="text-[11px] text-[#878787]">
-              Inclusive of all taxes
+            <span className="text-[11px] text-slate-400">
+              Tax included · Free store pickup & delivery
             </span>
           </div>
 
           {/* Delivery & Quantity Stepper Block */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 border border-[#E0E0E0] rounded-[6px]">
-            <div className="flex items-center gap-2 text-xs">
-              <MapPin className="w-4 h-4 text-[#2874F0] shrink-0" />
+          <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+            <div className="flex items-center gap-2.5 text-xs">
+              <MapPin className="w-4 h-4 text-indigo-600 shrink-0" />
               <div>
-                <span className="text-[#878787] block text-[11px]">Deliver to</span>
-                <span className="font-semibold text-[#212121]">
+                <span className="text-slate-500 block text-[11px]">Fulfillment Store</span>
+                <span className="font-semibold text-slate-900">
                   {selectedStore?.city} · {selectedStore?.storeCode}
                 </span>
                 {inStock ? (
-                  <span className="ml-2 text-[#388E3C] font-semibold">
-                    — In Stock ({currentStoreStock} units left)
+                  <span className="ml-2 text-emerald-700 font-medium">
+                    — In Stock ({currentStoreStock} available)
                   </span>
                 ) : (
-                  <span className="ml-2 text-[#D32F2F] font-semibold">
-                    — Currently Out of Stock at this store
+                  <span className="ml-2 text-rose-600 font-medium">
+                    — Out of Stock at this store
                   </span>
                 )}
               </div>
@@ -317,24 +314,24 @@ export default function ProductDetail() {
 
             {/* Stepper */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-[#878787]">Qty:</span>
-              <div className="flex items-center border border-[#E0E0E0] bg-white rounded-[4px] overflow-hidden">
+              <span className="text-xs text-slate-500 font-medium">Qty:</span>
+              <div className="flex items-center border border-slate-200 bg-white rounded-lg overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
                   disabled={quantity <= 1}
-                  className="px-2 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                  className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer transition-colors"
                 >
                   <Minus className="w-3 h-3" />
                 </button>
-                <span className="px-3 py-1 font-semibold text-xs text-[#212121] min-w-[28px] text-center">
+                <span className="px-3 py-1 font-semibold text-xs text-slate-900 min-w-[28px] text-center">
                   {quantity}
                 </span>
                 <button
                   type="button"
                   onClick={() => setQuantity(quantity + 1)}
                   disabled={quantity >= currentStoreStock}
-                  className="px-2 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                  className="px-2.5 py-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 cursor-pointer transition-colors"
                 >
                   <Plus className="w-3 h-3" />
                 </button>
@@ -344,48 +341,48 @@ export default function ProductDetail() {
 
           {/* Description */}
           <div className="flex flex-col gap-1 text-xs">
-            <span className="font-semibold text-xs text-[#212121]">Description</span>
-            <p className="text-[#878787] leading-relaxed">
+            <span className="font-semibold text-xs text-slate-900">Product Overview</span>
+            <p className="text-slate-600 leading-relaxed">
               {product.description || 'High quality retail-grade merchandise with full manufacturer warranty and verified serial inspection.'}
             </p>
           </div>
 
           {/* Retail Chain Availability Table (proves retail-chain model across 6 stores) */}
-          <div className="flex flex-col gap-2 pt-2">
-            <span className="font-semibold text-xs text-[#212121]">
+          <div className="flex flex-col gap-2 pt-1">
+            <span className="font-semibold text-xs text-slate-900">
               Chain-wide Store Availability (5 Metro Cities)
             </span>
-            <div className="border border-[#E0E0E0] rounded-[6px] overflow-hidden">
+            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
               <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 border-b border-[#E0E0E0] text-[11px] font-semibold text-[#878787] uppercase tracking-wider">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                   <tr>
-                    <th className="py-2 px-3">Store Code</th>
-                    <th className="py-2 px-3">City</th>
-                    <th className="py-2 px-3">In-Store Stock</th>
-                    <th className="py-2 px-3 text-right">Action</th>
+                    <th className="py-2.5 px-3">Store Code</th>
+                    <th className="py-2.5 px-3">City</th>
+                    <th className="py-2.5 px-3">In-Store Stock</th>
+                    <th className="py-2.5 px-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E0E0E0]">
+                <tbody className="divide-y divide-slate-100">
                   {availability.map((store) => {
                     const isSelected = store.storeId === selectedStore?.id;
                     return (
                       <tr
                         key={store.storeId}
-                        className={isSelected ? 'bg-blue-50/50 font-medium' : 'hover:bg-gray-50'}
+                        className={isSelected ? 'bg-indigo-50/40 font-medium' : 'hover:bg-slate-50/60'}
                       >
-                        <td className="py-2 px-3 font-mono text-[11px] text-[#212121]">
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-900">
                           {store.storeCode}
                           {isSelected && (
-                            <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] bg-[#2874F0] text-white font-sans uppercase">
+                            <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[9px] bg-indigo-600 text-white font-sans uppercase font-semibold">
                               Active
                             </span>
                           )}
                         </td>
-                        <td className="py-2 px-3 text-[#878787]">{store.city}</td>
-                        <td className="py-2 px-3">
+                        <td className="py-2.5 px-3 text-slate-600">{store.city}</td>
+                        <td className="py-2.5 px-3">
                           <StockBadge quantity={store.stockQty} />
                         </td>
-                        <td className="py-2 px-3 text-right">
+                        <td className="py-2.5 px-3 text-right">
                           {!isSelected ? (
                             <button
                               type="button"
@@ -399,12 +396,12 @@ export default function ProductDetail() {
                                   });
                                 }
                               }}
-                              className="text-[11px] text-[#2874F0] hover:underline font-semibold cursor-pointer"
+                              className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
                             >
-                              Switch to Store
+                              Switch Store
                             </button>
                           ) : (
-                            <span className="text-[11px] text-[#388E3C] font-semibold">
+                            <span className="text-[11px] text-emerald-600 font-semibold">
                               Selected
                             </span>
                           )}
@@ -420,58 +417,58 @@ export default function ProductDetail() {
       </div>
 
       {/* Small Collapsible Inventory Source Details Section (Default Collapsed) */}
-      <div className="border border-[#E0E0E0] rounded-[6px] bg-white overflow-hidden shadow-sm">
+      <div className="border border-slate-200/90 rounded-xl bg-white overflow-hidden shadow-2xs">
         <button
           type="button"
           onClick={() => setProofOpen(!proofOpen)}
-          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-[#878787] hover:text-[#212121] bg-gray-50/60 transition-colors cursor-pointer"
+          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50/80 transition-colors cursor-pointer"
         >
           <span className="flex items-center gap-2">
-            <Database className="w-3.5 h-3.5 text-[#2874F0]" />
+            <Database className="w-3.5 h-3.5 text-indigo-600" />
             <span>Inventory Source & Reconciliation Telemetry (Demo Proof)</span>
-            <span className="font-mono text-[10px] text-gray-500 bg-gray-200 px-1.5 py-0.2 rounded">
+            <span className="font-mono text-[10px] text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded-full font-bold">
               PostgreSQL SSoT
             </span>
           </span>
-          <span className="flex items-center gap-1 text-[11px]">
+          <span className="flex items-center gap-1 text-[11px] text-slate-500">
             {proofOpen ? 'Hide' : 'Show'}
             {proofOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </span>
         </button>
 
         {proofOpen && (
-          <div className="p-4 border-t border-[#E0E0E0] flex flex-col gap-3 text-xs">
+          <div className="p-4 border-t border-slate-100 flex flex-col gap-3 text-xs">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-[11px]">
-              <div className="p-2 rounded bg-gray-50 border border-gray-200">
-                <span className="text-gray-500 block text-[10px]">INVENTORY SSoT</span>
-                <span className="font-bold text-[#212121]">PostgreSQL (atomic ledger)</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-400 block text-[10px]">INVENTORY SSoT</span>
+                <span className="font-bold text-slate-800">PostgreSQL (atomic ledger)</span>
               </div>
-              <div className="p-2 rounded bg-gray-50 border border-gray-200">
-                <span className="text-gray-500 block text-[10px]">PG TOTAL STOCK</span>
-                <span className="font-bold text-[#212121]">
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-400 block text-[10px]">PG TOTAL STOCK</span>
+                <span className="font-bold text-slate-800">
                   {reconciliationRow?.pgTotalStock ?? product.totalStock ?? 'N/A'}
                 </span>
               </div>
-              <div className="p-2 rounded bg-gray-50 border border-gray-200">
-                <span className="text-gray-500 block text-[10px]">OPENSEARCH TOTAL</span>
-                <span className="font-bold text-[#212121]">
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-400 block text-[10px]">OPENSEARCH TOTAL</span>
+                <span className="font-bold text-slate-800">
                   {reconciliationRow?.osTotalStock ?? 'N/A'}
                 </span>
               </div>
-              <div className="p-2 rounded bg-gray-50 border border-gray-200">
-                <span className="text-gray-500 block text-[10px]">SYNC STATUS</span>
+              <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200/80">
+                <span className="text-slate-400 block text-[10px]">SYNC STATUS</span>
                 <div>
                   <SyncBadge status={reconciliationRow?.status || 'PASS'} />
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-gray-500 italic">
+            <p className="text-[11px] text-slate-500 italic">
               Inventory source: PostgreSQL. OpenSearch index tracks updates asynchronously via Apache Kafka consumer.
             </p>
 
             <div className="mt-1">
-              <span className="text-[10px] font-mono text-gray-400 block mb-1">
+              <span className="text-[10px] font-mono text-slate-400 block mb-1">
                 RAW PRODUCT & RECONCILIATION RECORD:
               </span>
               <JsonViewer data={{ product, reconciliation: reconciliationRow }} defaultExpanded={false} />
