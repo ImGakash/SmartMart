@@ -8,10 +8,13 @@ import {
   Activity,
   Loader2,
   ChevronDown,
-  MapPin
+  MapPin,
+  User,
+  Users
 } from 'lucide-react';
 
-const SEEDED_CUSTOMER_ID = '30000000-0000-4000-8000-000000000001';
+const C01_ID = '30000000-0000-4000-8000-000000000001';
+const C02_ID = '30000000-0000-4000-8000-000000000002';
 const SEEDED_STORE_ID = '20000000-0000-4000-8000-000000000001';
 
 const HEALTH_SERVICES = [
@@ -27,15 +30,28 @@ export default function Login() {
     customers,
     selectedStore,
     setSelectedStore,
+    selectedCustomer,
     setSelectedCustomer,
     setRole,
-    enterAsGuest,
     healthStatus: appHealthStatus,
   } = useApp();
 
   const [navigatingRole, setNavigatingRole] = useState(null);
+  
+  // Customer selection state for Card 1
+  const [selectedCustomerId, setSelectedCustomerId] = useState(
+    selectedCustomer?.id || C01_ID
+  );
+
+  // Guest demo identity selector state
+  const [showGuestPicker, setShowGuestPicker] = useState(false);
+  const [selectedGuestId, setSelectedGuestId] = useState(C01_ID);
+
+  // POS Store selector state
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [selectedPosStoreId, setSelectedPosStoreId] = useState('');
+
+  // Live health state
   const [healthData, setHealthData] = useState(appHealthStatus || null);
   const [healthLoading, setHealthLoading] = useState(!appHealthStatus);
   const [healthError, setHealthError] = useState(false);
@@ -81,15 +97,25 @@ export default function Login() {
     }
   }, [stores, selectedStore, selectedPosStoreId]);
 
+  // Update default customer ID if not set
+  useEffect(() => {
+    if (customers && customers.length > 0 && !selectedCustomerId) {
+      const defaultCustomer =
+        customers.find((c) => c.id === C01_ID) || customers[0];
+      setSelectedCustomerId(defaultCustomer.id);
+    }
+  }, [customers, selectedCustomerId]);
+
   // BUTTON 1 — Continue as Customer
-  function handleEnterCustomer() {
+  function handleEnterCustomer(targetCustomerId) {
     if (navigatingRole) return;
     setNavigatingRole('customer');
 
+    const customerId = targetCustomerId || selectedCustomerId || C01_ID;
     const customer =
-      customers.find((c) => c.id === SEEDED_CUSTOMER_ID) ||
+      customers.find((c) => c.id === customerId) ||
       customers[0] ||
-      { id: SEEDED_CUSTOMER_ID, name: 'Asha Rao', email: 'c01@demo.smartmart.in', city: 'Bengaluru' };
+      { id: C01_ID, name: 'Asha Rao', email: 'c01@demo.smartmart.in', city: 'Bengaluru' };
 
     const store =
       stores.find((s) => s.id === SEEDED_STORE_ID) ||
@@ -131,11 +157,31 @@ export default function Login() {
     navigate('/xray');
   }
 
-  // BUTTON 4 — Continue as Guest
-  function handleEnterGuest() {
+  // BUTTON 4 — Toggle Guest Demo Identity Selector
+  function handleToggleGuestPicker() {
+    setShowGuestPicker((prev) => !prev);
+  }
+
+  // Login as Guest with specific identity (c01 or c02)
+  function handleEnterGuestWithCustomer(targetGuestId) {
     if (navigatingRole) return;
     setNavigatingRole('guest');
-    enterAsGuest();
+
+    const guestId = targetGuestId || selectedGuestId || C01_ID;
+    const guestCustomer =
+      customers.find((c) => c.id === guestId) ||
+      (guestId === C02_ID
+        ? { id: C02_ID, name: 'Vikram Malhotra (Guest)', email: 'c02@demo.smartmart.in', city: 'Bengaluru' }
+        : { id: C01_ID, name: 'Asha Rao (Guest)', email: 'c01@demo.smartmart.in', city: 'Bengaluru' });
+
+    const guestStore =
+      stores.find((s) => s.id === SEEDED_STORE_ID) ||
+      stores[0] ||
+      { id: SEEDED_STORE_ID, storeCode: 'BLR-01', storeName: 'SmartMart Indiranagar', city: 'Bengaluru' };
+
+    setSelectedCustomer(guestCustomer);
+    setSelectedStore(guestStore);
+    setRole('guest');
     navigate('/');
   }
 
@@ -169,7 +215,7 @@ export default function Login() {
 
       {/* Main Center Stage: White Screen with Centered Context & Card */}
       <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-8 sm:py-12 flex flex-col items-center justify-center">
-        {/* Centered Heading: Retail Stores Across All Metro Cities */}
+        {/* Centered Heading */}
         <div className="flex flex-col items-center text-center max-w-xl mb-8">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-50 border border-slate-200 shadow-2xs text-indigo-700 text-[12px] font-semibold mb-3">
             <MapPin className="w-3.5 h-3.5 text-indigo-600" />
@@ -195,94 +241,131 @@ export default function Login() {
             One inventory. Every channel.
           </p>
 
-          {/* 3. Role Buttons */}
-          <div className="flex flex-col gap-3">
-            {/* BUTTON 1 — Continue as Customer */}
-            <button
-              type="button"
-              onClick={handleEnterCustomer}
-              disabled={Boolean(navigatingRole)}
-              className="w-full h-[40px] px-5 py-2 rounded-[6px] bg-[#FF9F00] hover:bg-[#E58F00] text-white text-[14px] font-medium flex items-center justify-center relative cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
-            >
-              {navigatingRole === 'customer' ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2.5 shrink-0" />
-              ) : (
-                <ShoppingBag className="w-4 h-4 mr-2.5 shrink-0" />
-              )}
-              <span>Continue as Customer</span>
-            </button>
+          {/* 3. Role Selection Sections */}
+          <div className="flex flex-col gap-4">
+            {/* SECTION 1 — Customer Role with Dropdown (GET /customers) */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-[12px] text-slate-600 px-0.5">
+                <label
+                  htmlFor="customer-account-selector"
+                  className="font-medium text-slate-700 flex items-center gap-1.5"
+                >
+                  <User className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Customer Account:</span>
+                </label>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {customers.length > 0 ? `${customers.length} seeded` : 'c01–c60'}
+                </span>
+              </div>
 
-            {/* BUTTON 2 — Open Store Terminal (POS) */}
-            <button
-              type="button"
-              onClick={handleTogglePosStoreSelector}
-              disabled={Boolean(navigatingRole)}
-              className="w-full h-[40px] px-5 py-2 rounded-[6px] bg-[#F59E0B] hover:bg-[#D97706] text-white text-[14px] font-medium flex items-center justify-between cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
-            >
-              <div className="flex items-center">
-                {navigatingRole === 'store' ? (
+              {customers.length === 0 ? (
+                <div className="h-[38px] bg-slate-100 rounded-[6px] animate-pulse" />
+              ) : (
+                <select
+                  id="customer-account-selector"
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="w-full h-[38px] px-3 bg-white border border-slate-200 rounded-[6px] text-[13px] text-slate-800 focus:outline-none focus:border-[#FF9F00] cursor-pointer"
+                >
+                  {customers.map((c, idx) => {
+                    const code = `c${String(idx + 1).padStart(2, '0')}`;
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {code} · {c.name} ({c.email})
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleEnterCustomer(selectedCustomerId)}
+                disabled={Boolean(navigatingRole)}
+                className="w-full h-[40px] px-5 py-2 rounded-[6px] bg-[#FF9F00] hover:bg-[#E58F00] text-white text-[14px] font-medium flex items-center justify-center relative cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
+              >
+                {navigatingRole === 'customer' ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2.5 shrink-0" />
                 ) : (
-                  <Store className="w-4 h-4 mr-2.5 shrink-0" />
+                  <ShoppingBag className="w-4 h-4 mr-2.5 shrink-0" />
                 )}
-                <span>Open Store Terminal (POS)</span>
-              </div>
-              <ChevronDown
-                className={`w-4 h-4 shrink-0 transition-transform ${
-                  showStorePicker ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
+                <span>Continue as Customer</span>
+              </button>
+            </div>
 
-            {/* Inline Store Selector Dropdown for POS */}
-            {showStorePicker && (
-              <div className="flex flex-col gap-2 p-3 bg-slate-50 border border-slate-200 rounded-[6px]">
-                <label
-                  htmlFor="pos-store-selector"
-                  className="text-[12px] font-medium text-slate-600"
-                >
-                  Select Store Location:
-                </label>
+            {/* SECTION 2 — Open Store Terminal (POS) */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleTogglePosStoreSelector}
+                disabled={Boolean(navigatingRole)}
+                className="w-full h-[40px] px-5 py-2 rounded-[6px] bg-[#F59E0B] hover:bg-[#D97706] text-white text-[14px] font-medium flex items-center justify-between cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
+              >
+                <div className="flex items-center">
+                  {navigatingRole === 'store' ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2.5 shrink-0" />
+                  ) : (
+                    <Store className="w-4 h-4 mr-2.5 shrink-0" />
+                  )}
+                  <span>Open Store Terminal (POS)</span>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 shrink-0 transition-transform ${
+                    showStorePicker ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
 
-                {stores.length === 0 ? (
-                  <div className="h-[38px] bg-slate-200/70 rounded-[6px] animate-pulse" />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <select
-                      id="pos-store-selector"
-                      value={selectedPosStoreId}
-                      onChange={(e) => {
-                        setSelectedPosStoreId(e.target.value);
-                        handleLaunchPos(e.target.value);
-                      }}
-                      className="flex-1 h-[38px] px-3 bg-white border border-slate-200 rounded-[6px] text-[14px] text-slate-800 focus:outline-none focus:border-[#F59E0B] cursor-pointer"
-                      autoFocus
-                    >
-                      {stores.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.storeCode} · {s.city}
-                        </option>
-                      ))}
-                    </select>
+              {/* Inline Store Selector Dropdown for POS */}
+              {showStorePicker && (
+                <div className="flex flex-col gap-2 p-3 bg-slate-50 border border-slate-200 rounded-[6px]">
+                  <label
+                    htmlFor="pos-store-selector"
+                    className="text-[12px] font-medium text-slate-600"
+                  >
+                    Select Store Location:
+                  </label>
 
-                    <button
-                      type="button"
-                      onClick={() => handleLaunchPos(selectedPosStoreId)}
-                      disabled={Boolean(navigatingRole)}
-                      className="h-[38px] px-4 rounded-[6px] bg-[#F59E0B] hover:bg-[#D97706] text-white text-[14px] font-medium flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60"
-                    >
-                      {navigatingRole === 'store' ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        'Enter'
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+                  {stores.length === 0 ? (
+                    <div className="h-[38px] bg-slate-200/70 rounded-[6px] animate-pulse" />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <select
+                        id="pos-store-selector"
+                        value={selectedPosStoreId}
+                        onChange={(e) => {
+                          setSelectedPosStoreId(e.target.value);
+                          handleLaunchPos(e.target.value);
+                        }}
+                        className="flex-1 h-[38px] px-3 bg-white border border-slate-200 rounded-[6px] text-[14px] text-slate-800 focus:outline-none focus:border-[#F59E0B] cursor-pointer"
+                        autoFocus
+                      >
+                        {stores.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.storeCode} · {s.city}
+                          </option>
+                        ))}
+                      </select>
 
-            {/* BUTTON 3 — Enter Operations Console (Admin) */}
+                      <button
+                        type="button"
+                        onClick={() => handleLaunchPos(selectedPosStoreId)}
+                        disabled={Boolean(navigatingRole)}
+                        className="h-[38px] px-4 rounded-[6px] bg-[#F59E0B] hover:bg-[#D97706] text-white text-[14px] font-medium flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60"
+                      >
+                        {navigatingRole === 'store' ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          'Enter'
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SECTION 3 — Enter Operations Console (Admin) */}
             <button
               type="button"
               onClick={handleEnterAdmin}
@@ -299,20 +382,115 @@ export default function Login() {
           </div>
 
           {/* Divider */}
-          <div className="border-t border-slate-200 my-3" />
+          <div className="border-t border-slate-200 my-4" />
 
-          {/* BUTTON 4 — Continue as Guest */}
-          <button
-            type="button"
-            onClick={handleEnterGuest}
-            disabled={Boolean(navigatingRole)}
-            className="w-full h-[36px] px-4 rounded-[6px] border border-slate-200 bg-transparent hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {navigatingRole === 'guest' ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2 shrink-0" />
-            ) : null}
-            <span>Continue as Guest</span>
-          </button>
+          {/* SECTION 4 — Continue as Guest / Select Demo Identity */}
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleToggleGuestPicker}
+              disabled={Boolean(navigatingRole)}
+              className="w-full h-[36px] px-4 rounded-[6px] border border-slate-200 bg-transparent hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center justify-between cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center">
+                {navigatingRole === 'guest' ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2 shrink-0" />
+                ) : (
+                  <Users className="w-3.5 h-3.5 mr-2 text-slate-500 shrink-0" />
+                )}
+                <span>Continue as Guest</span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${
+                  showGuestPicker ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {/* Simplified Demo Identity Selector for Guest (only c01 and c02) */}
+            {showGuestPicker && (
+              <div className="flex flex-col gap-2.5 p-3 bg-slate-50 border border-slate-200 rounded-[6px]">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="guest-identity-selector"
+                    className="text-[12px] font-semibold text-slate-800"
+                  >
+                    Select Demo Identity
+                  </label>
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    Race Demo
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-500 leading-tight">
+                  Select an independent identity for this browser to test concurrent carts:
+                </p>
+
+                {/* Simplified dropdown: ONLY c01 and c02 */}
+                <div className="flex items-center gap-2">
+                  <select
+                    id="guest-identity-selector"
+                    value={selectedGuestId}
+                    onChange={(e) => setSelectedGuestId(e.target.value)}
+                    className="flex-1 h-[36px] px-2.5 bg-white border border-slate-200 rounded-[6px] text-[12px] font-medium text-slate-800 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value={C01_ID}>c01 · Asha Rao (c01@demo.smartmart.in)</option>
+                    <option value={C02_ID}>c02 · Vikram Malhotra (c02@demo.smartmart.in)</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => handleEnterGuestWithCustomer(selectedGuestId)}
+                    disabled={Boolean(navigatingRole)}
+                    className="h-[36px] px-3.5 rounded-[6px] bg-slate-800 hover:bg-slate-900 text-white text-[12px] font-medium flex items-center justify-center cursor-pointer transition-colors disabled:opacity-60"
+                  >
+                    {navigatingRole === 'guest' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      'Enter'
+                    )}
+                  </button>
+                </div>
+
+                {/* Quick 1-click identity cards for two browsers */}
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleEnterGuestWithCustomer(C01_ID)}
+                    disabled={Boolean(navigatingRole)}
+                    className={`p-2 rounded-[6px] text-left border cursor-pointer transition-all ${
+                      selectedGuestId === C01_ID
+                        ? 'bg-white border-indigo-400 ring-1 ring-indigo-300 text-indigo-900'
+                        : 'bg-white/80 border-slate-200 text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold text-slate-900 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span>c01 · Browser 1</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">Asha Rao</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleEnterGuestWithCustomer(C02_ID)}
+                    disabled={Boolean(navigatingRole)}
+                    className={`p-2 rounded-[6px] text-left border cursor-pointer transition-all ${
+                      selectedGuestId === C02_ID
+                        ? 'bg-white border-indigo-400 ring-1 ring-indigo-300 text-indigo-900'
+                        : 'bg-white/80 border-slate-200 text-slate-700 hover:bg-white'
+                    }`}
+                  >
+                    <div className="text-[11px] font-bold text-slate-900 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      <span>c02 · Browser 2</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">Vikram Malhotra</div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Live System Status Strip */}
           <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-center">
