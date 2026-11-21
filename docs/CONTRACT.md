@@ -812,5 +812,3 @@ Run `POST /demo/reset` before stepping on stage. Verify 10/10 Consistency Report
    * Open X-Ray Consistency Panel → all **10/10 SQL invariants = `PASS`** (`baseline_qty - sold = current_stock`, zero negative stock, zero orphan outbox events, zero duplicate notifications).
    * One-line wrap: *"PostgreSQL guarantees correctness, Kafka guarantees decoupled durability, OpenSearch guarantees instant discovery—proven live under race conditions and simulated crashes."*
 ```
-
-
