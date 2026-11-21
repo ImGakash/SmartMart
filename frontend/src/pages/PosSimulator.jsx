@@ -24,7 +24,8 @@ import {
   RefreshCw,
   ExternalLink,
   ShieldCheck,
-  Check
+  Check,
+  Receipt
 } from 'lucide-react';
 
 export default function PosSimulator() {
@@ -139,6 +140,13 @@ export default function PosSimulator() {
     );
   }
 
+  function handleSetExactQuantity(productId, qty) {
+    if (qty <= 0) return handleRemoveItem(productId);
+    setRegisterItems((prev) =>
+      prev.map((i) => (i.productId === productId ? { ...i, quantity: qty } : i))
+    );
+  }
+
   function handleRemoveItem(productId) {
     setRegisterItems((prev) => prev.filter((i) => i.productId !== productId));
   }
@@ -154,7 +162,7 @@ export default function PosSimulator() {
     return registerItems.reduce((sum, item) => sum + item.pricePaise * item.quantity, 0);
   }, [registerItems]);
 
-  const totalUnits = useMemo(() => {
+  const totalItemCount = useMemo(() => {
     return registerItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [registerItems]);
 
@@ -177,110 +185,113 @@ export default function PosSimulator() {
         apiGet('/xray/metrics').catch(() => null),
       ]);
 
-      const storeRow = prodRes?.availability?.find((a) => a.storeId === selectedStore.id);
-      if (storeRow) beforePgStock = storeRow.stockQty;
+      const storeAvail = prodRes?.availability?.find((a) => a.storeId === selectedStore.id);
+      if (storeAvail) {
+        beforePgStock = storeAvail.stockQty;
+      }
 
-      if (xrayRes?.reconciliation?.rows) {
-        const row = xrayRes.reconciliation.rows.find((r) => r.productId === primaryItem.productId);
-        if (row) {
-          beforeOsStock = row.osTotalStock;
-          beforeStatus = row.status;
-        }
+      const reconRow = xrayRes?.reconciliation?.rows?.find((r) => r.productId === primaryItem.productId);
+      if (reconRow) {
+        beforeOsStock = reconRow.osTotalStock;
+        beforeStatus = reconRow.status;
       }
     } catch (e) {
-      // fallback to cached
+      console.warn('Could not fetch before snapshot:', e.message);
     }
 
-    setInventoryProof({
-      productName: primaryItem.name,
-      productId: primaryItem.productId,
-      before: {
-        pgStock: beforePgStock,
-        osStock: beforeOsStock,
-        status: beforeStatus,
-      },
-      after: null,
-      isSyncing: true,
-      isLagging: false,
-    });
+    const payload = {
+      storeId: selectedStore.id,
+      items: registerItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    };
 
     try {
-      const payload = {
-        storeId: selectedStore.id,
-        items: registerItems.map((i) => ({
-          productId: i.productId,
-          quantity: i.quantity,
-        })),
-      };
-
-      // POST /pos/sale
       const res = await apiPost('/pos/sale', payload);
-      const newOrder = res?.order;
+      const order = res.order;
 
-      setCompletedOrder(newOrder);
-      setRegisterItems([]);
-      loadCatalog();
+      setCompletedOrder(order);
 
-      showToast({
-        type: 'success',
-        message: `Sale completed! Order ${newOrder?.orderNumber}`,
+      // Initialize BEFORE/AFTER proof state
+      setInventoryProof({
+        productName: primaryItem.name,
+        productId: primaryItem.productId,
+        before: {
+          pgStock: beforePgStock,
+          osStock: beforeOsStock,
+          status: beforeStatus,
+        },
+        after: {
+          pgStock: Math.max(0, beforePgStock - primaryItem.quantity),
+          osStock: beforeOsStock,
+          status: 'SYNCING',
+        },
+        isSyncing: true,
+        isLagging: false,
       });
 
-      // 2. Poll /xray/metrics every 1s (max 6s) until reconciliation row is PASS
-      let attempts = 0;
-      const expectedNewPgStock = Math.max(0, beforePgStock - primaryItem.quantity);
+      // Poll /xray/metrics every 1s for max 6s
+      let elapsedSeconds = 0;
+      const MAX_POLL_SECONDS = 6;
 
       pollTimerRef.current = setInterval(async () => {
-        attempts++;
+        elapsedSeconds += 1;
         try {
-          const xrayNow = await apiGet('/xray/metrics');
-          const rowNow = xrayNow?.reconciliation?.rows?.find((r) => r.productId === primaryItem.productId);
+          const [prodCheck, xrayCheck] = await Promise.all([
+            apiGet(`/products/${primaryItem.productId}`).catch(() => null),
+            apiGet('/xray/metrics').catch(() => null),
+          ]);
 
-          if (rowNow && rowNow.status === 'PASS') {
-            clearInterval(pollTimerRef.current);
-            setInventoryProof((prev) => {
-              if (!prev) return prev;
-              return {
-                ...prev,
-                isSyncing: false,
-                isLagging: false,
-                after: {
-                  pgStock: expectedNewPgStock,
-                  osStock: expectedNewPgStock,
-                  status: 'PASS',
-                },
-              };
-            });
-            return;
-          }
-        } catch (pollErr) {
-          // continue polling
-        }
+          const storeAvail = prodCheck?.availability?.find((a) => a.storeId === selectedStore.id);
+          const currentPg = storeAvail ? storeAvail.stockQty : Math.max(0, beforePgStock - primaryItem.quantity);
 
-        // If still mismatched after 6s (6 attempts) -> Honest amber WARN: "Index lagging — check Control Tower"
-        if (attempts >= 6) {
-          clearInterval(pollTimerRef.current);
+          const reconRow = xrayCheck?.reconciliation?.rows?.find((r) => r.productId === primaryItem.productId);
+          const currentOs = reconRow ? reconRow.osTotalStock : beforeOsStock;
+          const currentStatus = reconRow ? reconRow.status : 'SYNCING';
+
           setInventoryProof((prev) => {
-            if (!prev) return prev;
+            if (!prev) return null;
             return {
               ...prev,
-              isSyncing: false,
-              isLagging: true,
               after: {
-                pgStock: expectedNewPgStock,
-                osStock: beforeOsStock, // lagging stock
-                status: 'SYNCING',
+                pgStock: currentPg,
+                osStock: currentOs,
+                status: currentStatus,
               },
             };
           });
+
+          if (currentStatus === 'PASS' || elapsedSeconds >= MAX_POLL_SECONDS) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+            setInventoryProof((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                isSyncing: false,
+                isLagging: currentStatus !== 'PASS',
+              };
+            });
+            loadCatalog();
+          }
+        } catch (pollErr) {
+          if (elapsedSeconds >= MAX_POLL_SECONDS) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+          }
         }
       }, 1000);
+
+      showToast({
+        type: 'success',
+        message: `Sale completed: #${order.orderNumber} (POS_STORE)`,
+      });
     } catch (err) {
-      setInventoryProof(null);
       showToast({
         type: 'error',
-        code: err.code || 'POS_ERROR',
-        message: err.message,
+        code: err.code || 'SALE_FAILED',
+        message: err.message || 'Counter sale failed',
         details: err.details,
       });
     } finally {
@@ -288,60 +299,35 @@ export default function PosSimulator() {
     }
   }
 
-  const categories = ['All', 'Electronics', 'Audio', 'Appliances', 'Footwear', 'Apparel'];
+  const categories = ['All', 'Audio', 'Electronics', 'Appliances', 'Footwear', 'Apparel'];
 
   return (
-    <div className="min-h-screen bg-black text-amber-100 flex flex-col font-sans selection:bg-amber-500 selection:text-black">
-      {/* Terminal Top Bar */}
-      <div className="bg-neutral-950 border-b border-amber-500/30 px-4 lg:px-8 py-3.5 shadow-2xl">
+    <div className="flex-1 flex flex-col font-mono bg-[#050811] text-[#FBBF24]">
+      {/* Sub-header Store Selector Strip */}
+      <div className="bg-[#0A0E1A] border-b border-amber-500/20 px-4 lg:px-8 py-3">
         <div className="max-w-[1700px] mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border-2 border-amber-500 text-amber-400 flex items-center justify-center font-mono font-black text-lg shadow-lg shadow-amber-500/20">
-              <Terminal className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl lg:text-2xl font-mono font-black tracking-wider text-amber-400 uppercase">
-                  SMARTMART — PHYSICAL STORE TERMINAL
-                </h1>
-                <span className="px-2 py-0.5 rounded bg-amber-500 text-black text-[11px] font-mono font-black uppercase tracking-wider">
-                  POS ACTIVE
-                </span>
-              </div>
-              <p className="text-xs font-mono text-amber-200/60">
-                Walk-in counter sale register • Direct inventory decrement • No customer identity
-              </p>
-            </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs uppercase font-bold text-amber-400/80">Active Store Terminal:</span>
+            <select
+              value={selectedStore?.id || ''}
+              onChange={(e) => {
+                const st = stores.find((s) => s.id === e.target.value);
+                if (st) setSelectedStore(st);
+              }}
+              className="bg-black border border-amber-500/40 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-200 focus:outline-none cursor-pointer"
+            >
+              {stores.map((s) => (
+                <option key={s.id} value={s.id} className="bg-neutral-950 text-amber-200">
+                  {s.storeCode} — {s.city} ({s.storeName})
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-neutral-900 border border-amber-500/40 rounded-xl px-4 py-2">
-              <Store className="w-4 h-4 text-amber-400 shrink-0" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-mono text-amber-400 uppercase font-black tracking-widest leading-none mb-1">
-                  CURRENT STORE CODE
-                </span>
-                <select
-                  value={selectedStore?.id || ''}
-                  onChange={(e) => {
-                    const st = stores.find((s) => s.id === e.target.value);
-                    if (st) setSelectedStore(st);
-                  }}
-                  className="bg-transparent font-mono text-sm font-bold text-amber-200 focus:outline-none cursor-pointer pr-2"
-                >
-                  {stores.map((s) => (
-                    <option key={s.id} value={s.id} className="bg-neutral-950 text-amber-200">
-                      {s.storeCode} — {s.city} ({s.storeName})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-neutral-900 border border-amber-500/20 font-mono text-xs text-amber-400">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{currentTime}</span>
-            </div>
+          <div className="flex items-center gap-2 text-xs text-amber-400/70">
+            <span>TERMINAL ID: TRM-{selectedStore?.storeCode || 'BLR01'}-01</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-bold">ONLINE · READY</span>
           </div>
         </div>
       </div>
@@ -383,7 +369,7 @@ export default function PosSimulator() {
           {/* Product Cards */}
           {loadingProducts ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {[1, 2, 3, 4, 6].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="bg-neutral-950 border border-amber-500/20 rounded-2xl h-44 animate-pulse" />
               ))}
             </div>
@@ -443,7 +429,7 @@ export default function PosSimulator() {
           )}
         </div>
 
-        {/* Right Column: Receipt & Proof Panel (5 cols) */}
+        {/* Right Column: Register Receipt & Proof Panel (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           {completedOrder ? (
             /* Confirmation Panel with BEFORE / AFTER Inventory Proof */
@@ -498,91 +484,85 @@ export default function PosSimulator() {
                     Product: <span className="font-bold text-white">{inventoryProof.productName}</span>
                   </div>
 
-                  {/* Two boxes side by side: BEFORE / AFTER */}
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    {/* BEFORE Box */}
-                    <div className="p-3 rounded-lg bg-neutral-900 border border-amber-500/30 flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
+                  {/* Two boxes side-by-side: BEFORE vs AFTER */}
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    {/* BEFORE BOX */}
+                    <div className="p-3 rounded-lg bg-neutral-900 border border-amber-500/30 flex flex-col gap-2">
+                      <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
                         <span className="text-[10px] uppercase font-bold text-slate-400">BEFORE SALE</span>
                         <SyncBadge status={inventoryProof.before?.status || 'PASS'} />
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400">PostgreSQL:</span>
-                        <span className="text-white font-bold">{inventoryProof.before?.pgStock} units</span>
+                        <span className="font-black text-amber-300">{inventoryProof.before?.pgStock} units</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400">OpenSearch:</span>
-                        <span className="text-sky-300 font-bold">{inventoryProof.before?.osStock} units</span>
+                        <span className="font-black text-emerald-400">{inventoryProof.before?.osStock} units</span>
                       </div>
                     </div>
 
-                    {/* AFTER Box */}
-                    <div className="p-3 rounded-lg bg-neutral-900 border border-amber-500/30 flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">AFTER SALE</span>
-                        {inventoryProof.after ? (
-                          <SyncBadge status={inventoryProof.after.status} />
-                        ) : (
-                          <span className="text-[10px] text-amber-400 animate-pulse">polling…</span>
-                        )}
+                    {/* AFTER BOX */}
+                    <div className="p-3 rounded-lg bg-neutral-900 border border-amber-500/60 flex flex-col gap-2">
+                      <div className="flex items-center justify-between border-b border-neutral-800 pb-1">
+                        <span className="text-[10px] uppercase font-bold text-amber-400">AFTER SALE</span>
+                        <SyncBadge status={inventoryProof.after?.status || 'SYNCING'} />
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400">PostgreSQL:</span>
-                        <span className="text-white font-bold">
-                          {inventoryProof.after ? `${inventoryProof.after.pgStock} units` : 'Deducted'}
-                        </span>
+                        <span className="font-black text-amber-300">{inventoryProof.after?.pgStock} units</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-slate-400">OpenSearch:</span>
-                        <span className="text-sky-300 font-bold">
-                          {inventoryProof.after ? `${inventoryProof.after.osStock} units` : 'Refreshing…'}
-                        </span>
+                        <span className="font-black text-emerald-400">{inventoryProof.after?.osStock} units</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Total Collected */}
-              <div className="flex justify-between items-center text-sm font-mono border-b border-amber-500/20 pb-3">
-                <span className="text-amber-400/80">Total Tendered:</span>
-                <Price paise={completedOrder.totalPaise} className="text-2xl font-black text-amber-400" />
+              {/* Order Timeline with POS styling */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-mono font-bold text-amber-400 uppercase">
+                  Transactional Outbox Relay Stream
+                </span>
+                <OrderTimeline
+                  orderId={completedOrder.id}
+                  totalItems={completedOrder.items?.length || 1}
+                  source="POS_STORE"
+                />
               </div>
 
-              {/* OrderTimeline Component */}
-              <OrderTimeline
-                orderId={completedOrder.id}
-                totalItems={completedOrder.items?.length || 1}
-                source="POS_STORE"
-              />
+              {/* Actions */}
+              <div className="flex flex-col gap-2.5 pt-2">
+                <Link
+                  to={`/?q=${encodeURIComponent(inventoryProof?.productName?.slice(0, 15) || 'product')}&city=${encodeURIComponent(selectedStore?.city || '')}`}
+                  className="w-full py-3 rounded-xl bg-cyan/15 hover:bg-cyan/25 border border-cyan/40 text-cyan font-mono font-bold text-xs uppercase flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Verify in Search (?q={inventoryProof?.productName?.slice(0, 15) || 'product'})</span>
+                </Link>
 
-              {/* Verify in Search button */}
-              <Link
-                to={`/?q=${encodeURIComponent(inventoryProof?.productName || 'boAt')}&city=${encodeURIComponent(selectedStore?.city || 'Bengaluru')}`}
-                className="w-full py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-mono text-xs font-bold border border-amber-500/40 transition-all flex items-center justify-center gap-2"
-              >
-                <Search className="w-4 h-4 text-amber-400" />
-                <span>Verify in Search (?q={inventoryProof?.productName?.slice(0, 15) || 'product'})</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleClearRegister}
-                className="w-full py-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-mono font-black text-base uppercase transition-all shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>NEW TRANSACTION (CLEAR)</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+                <button
+                  type="button"
+                  onClick={handleClearRegister}
+                  className="w-full py-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-mono font-black text-base uppercase transition-all shadow-xl shadow-amber-500/30 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>NEW TRANSACTION (CLEAR)</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ) : (
-            /* Active Register Receipt */
-            <div className="bg-neutral-950 border-2 border-amber-500/40 rounded-2xl p-6 shadow-2xl flex flex-col gap-6 sticky top-24">
-              <div className="flex items-center justify-between pb-3 border-b border-amber-500/30">
+            /* Active Register Ticket with Perforated Edge Styling */
+            <div className="bg-neutral-950 border-2 border-amber-500/40 rounded-2xl p-5 shadow-2xl flex flex-col gap-5">
+              {/* Receipt Header */}
+              <div className="flex items-center justify-between pb-3 border-b-2 border-dashed border-amber-500/40">
                 <div className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5 text-amber-400" />
-                  <h3 className="font-mono text-base font-black text-white uppercase tracking-wider">
-                    ACTIVE REGISTER TAPE
-                  </h3>
+                  <Receipt className="w-5 h-5 text-amber-400" />
+                  <span className="text-xs font-mono font-black text-amber-400 uppercase tracking-wider">
+                    CURRENT REGISTER TICKET
+                  </span>
                 </div>
                 {registerItems.length > 0 && (
                   <button
@@ -598,25 +578,24 @@ export default function PosSimulator() {
 
               {/* Items List */}
               {registerItems.length === 0 ? (
-                <div className="py-16 text-center flex flex-col items-center justify-center gap-2 text-amber-400/40 font-mono text-xs">
-                  <span>Register empty</span>
-                  <span>Tap products on the left to ring up items</span>
+                <div className="py-16 text-center flex flex-col items-center justify-center gap-2 text-amber-500/40">
+                  <Terminal className="w-8 h-8 opacity-40" />
+                  <span className="font-mono text-xs">REGISTER EMPTY — TAP PRODUCTS TO ADD</span>
                 </div>
               ) : (
-                <div className="flex flex-col divide-y divide-amber-500/20 max-h-[360px] overflow-y-auto pr-1">
+                <div className="flex flex-col divide-y divide-amber-500/15 max-h-72 overflow-y-auto custom-scrollbar pr-1">
                   {registerItems.map((item) => (
-                    <div key={item.productId} className="py-3 flex items-center justify-between gap-3">
-                      <div className="flex-1 flex flex-col">
-                        <span className="text-xs font-mono font-bold text-amber-200 line-clamp-1">
-                          {item.name}
-                        </span>
-                        <div className="flex items-center gap-2 text-[11px] font-mono text-amber-400/60">
+                    <div key={item.productId} className="py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-xs font-bold text-amber-200 truncate">{item.name}</span>
+                        <div className="flex items-center gap-2 text-[10px] text-amber-400/60">
                           <span>{item.sku}</span>
                           <span>•</span>
                           <Price paise={item.pricePaise} />
                         </div>
                       </div>
 
+                      {/* Touch buttons for quantity */}
                       <div className="flex items-center gap-1.5 bg-black border border-amber-500/40 rounded-lg p-1">
                         <button
                           type="button"
@@ -625,7 +604,7 @@ export default function PosSimulator() {
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-7 text-center font-mono font-black text-sm text-amber-300">
+                        <span className="w-7 text-center font-mono font-black text-sm text-amber-200">
                           {item.quantity}
                         </span>
                         <button
@@ -637,11 +616,8 @@ export default function PosSimulator() {
                         </button>
                       </div>
 
-                      <div className="text-right min-w-[70px]">
-                        <Price
-                          paise={item.pricePaise * item.quantity}
-                          className="text-sm font-mono font-black text-amber-400"
-                        />
+                      <div className="text-right font-black font-mono text-sm text-amber-400 min-w-[70px]">
+                        <Price paise={item.pricePaise * item.quantity} />
                       </div>
 
                       <button
@@ -656,19 +632,18 @@ export default function PosSimulator() {
                 </div>
               )}
 
-              {/* Running Total & Tender Bar */}
-              <div className="pt-4 border-t-2 border-dashed border-amber-500/30 flex flex-col gap-3">
-                <div className="flex justify-between items-center text-xs font-mono text-amber-400/80">
-                  <span>UNITS RINGED UP:</span>
-                  <span className="font-bold text-amber-300">{totalUnits}</span>
-                </div>
+              {/* Perforated Divider */}
+              <div className="border-t-2 border-b-2 border-dashed border-amber-500/30 py-1" />
 
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm font-mono font-black text-amber-200">RUNNING TOTAL:</span>
-                  <Price
-                    paise={runningTotalPaise}
-                    className="text-4xl font-mono font-black text-amber-400"
-                  />
+              {/* Running Total */}
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between text-xs text-amber-400/70">
+                  <span>Total Items:</span>
+                  <span className="font-bold text-amber-200">{totalItemCount}</span>
+                </div>
+                <div className="flex justify-between items-baseline pt-1">
+                  <span className="text-sm font-black uppercase text-amber-400">Total Payable:</span>
+                  <Price paise={runningTotalPaise} className="text-3xl font-black text-amber-300" />
                 </div>
               </div>
 
@@ -680,7 +655,7 @@ export default function PosSimulator() {
                 variant="warning"
                 icon={Zap}
                 size="lg"
-                className="w-full font-mono font-black text-lg text-black bg-amber-500 hover:bg-amber-400"
+                className="w-full font-mono font-black text-lg text-black bg-amber-500 hover:bg-amber-400 py-4 shadow-xl shadow-amber-500/20"
               >
                 COMPLETE SALE (POST /pos/sale)
               </DemoActionButton>
