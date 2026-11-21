@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './state/AppContext.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 import Login from './pages/Login.jsx';
 import RoleGate from './components/RoleGate.jsx';
@@ -53,33 +54,35 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppProvider>
-        <Routes>
-          {/* Unauthenticated Role Selector / Entry Gate */}
-          <Route path="/login" element={<Login />} />
+        <ErrorBoundary>
+          <Routes>
+            {/* Unauthenticated Role Selector / Entry Gate */}
+            <Route path="/login" element={<Login />} />
 
-          {/* Legacy redirects */}
-          <Route path="/order/:id" element={<OrderRedirect />} />
-          <Route path="/admin/proof" element={<Navigate to="/xray" replace />} />
+            {/* Legacy redirects */}
+            <Route path="/order/:id" element={<OrderRedirect />} />
+            <Route path="/admin/proof" element={<Navigate to="/xray" replace />} />
 
-          {/* Role-guarded Shell Routes */}
-          <Route
-            element={
-              <RoleGate>
-                <ShellRouter />
-              </RoleGate>
-            }
-          >
-            <Route index element={<Storefront />} />
-            <Route path="product/:id" element={<ProductDetail />} />
-            <Route path="cart" element={<CartCheckout />} />
-            <Route path="orders/:id" element={<OrderDetail />} />
-            <Route path="pos" element={<PosSimulator />} />
-            <Route path="xray" element={<XRayDashboard />} />
-            <Route path="race" element={<RaceArena />} />
-            <Route path="demo" element={<DemoRunbook />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
+            {/* Role-guarded Shell Routes */}
+            <Route
+              element={
+                <RoleGate>
+                  <ShellRouter />
+                </RoleGate>
+              }
+            >
+              <Route index element={<Storefront />} />
+              <Route path="product/:id" element={<ProductDetail />} />
+              <Route path="cart" element={<CartCheckout />} />
+              <Route path="orders/:id" element={<OrderDetail />} />
+              <Route path="pos" element={<PosSimulator />} />
+              <Route path="xray" element={<XRayDashboard />} />
+              <Route path="race" element={<RaceArena />} />
+              <Route path="demo" element={<DemoRunbook />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </ErrorBoundary>
       </AppProvider>
     </BrowserRouter>
   );

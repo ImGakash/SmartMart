@@ -3,9 +3,18 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '../state/AppContext.jsx';
 
 export default function RoleGate({ children }) {
-  const { role, showToast } = useApp();
+  const { role, showToast, loadingInitial } = useApp();
   const location = useLocation();
   const path = location.pathname;
+
+  // 0. Prevent flash of wrong route while hydrating initial state
+  if (loadingInitial) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#F1F3F6]">
+        <div className="w-8 h-8 rounded-full border-2 border-[#2874F0] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   // 1. If not authenticated / no role selected -> redirect to /login
   if (!role) {

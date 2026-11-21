@@ -1,0 +1,54 @@
+services:
+  # SmartMart Backend Web Service
+  - type: web
+    name: smartmart-backend
+    env: node
+    plan: standard
+    buildCommand: cd backend && npm ci
+    startCommand: cd backend && node src/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: PG_CA_CERT_PATH
+        value: ./ca.pem
+      - key: KAFKA_BROKERS
+        sync: false
+      - key: KAFKA_AUTH_MODE
+        value: sasl
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: KAFKA_CA_CERT_PATH
+        value: ./ca.pem
+      - key: OPENSEARCH_URL
+        sync: false
+      - key: OPENSEARCH_USERNAME
+        sync: false
+      - key: OPENSEARCH_PASSWORD
+        sync: false
+      - key: OPENSEARCH_CA_CERT_PATH
+        value: ./ca.pem
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+  # SmartMart Frontend Static Site
+  - type: static
+    name: smartmart-frontend
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_USE_MOCKS
+        value: "false"
+      - key: VITE_API_BASE
+        sync: false

@@ -56,14 +56,20 @@ router.get('/xray/metrics', async (req, res, next) => {
 // GET /xray/stream (SSE)
 router.get('/xray/stream', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
+  let isClosed = false;
+
   const sendMetrics = async () => {
+    if (isClosed) return;
     try {
       const bundle = await buildMetricsBundle();
-      res.write(`data: ${JSON.stringify(bundle)}\n\n`);
+      if (!isClosed) {
+        res.write(`data: ${JSON.stringify(bundle)}\n\n`);
+      }
     } catch (e) {
       // ignore transient stream error
     }
@@ -72,8 +78,17 @@ router.get('/xray/stream', async (req, res) => {
   await sendMetrics();
   const interval = setInterval(sendMetrics, 1000);
 
+  // Heartbeat comment every 15s to keep proxy connections alive
+  const heartbeat = setInterval(() => {
+    if (!isClosed) {
+      res.write(': heartbeat\n\n');
+    }
+  }, 15000);
+
   req.on('close', () => {
+    isClosed = true;
     clearInterval(interval);
+    clearInterval(heartbeat);
   });
 });
 
@@ -85,9 +100,12 @@ router.get('/orders/:id/events', async (req, res, next) => {
     const order = await db.getOrderById(orderId);
 
     res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
+
+    let isClosed = false;
 
     // Initial stage event since order is in DB
     const committedEvent = {
@@ -99,15 +117,20 @@ router.get('/orders/:id/events', async (req, res, next) => {
 
     // Heartbeat every 15s per CONTRACT.md §11
     const heartbeat = setInterval(() => {
-      res.write(': heartbeat\n\n');
+      if (!isClosed) {
+        res.write(': heartbeat\n\n');
+      }
     }, 15000);
 
     // Listen for live stage transitions from event bus
     const unsubscribe = bus.subscribeOrder(orderId, (data) => {
-      res.write(`event: stage\ndata: ${JSON.stringify(data)}\n\n`);
+      if (!isClosed) {
+        res.write(`event: stage\ndata: ${JSON.stringify(data)}\n\n`);
+      }
     });
 
     req.on('close', () => {
+      isClosed = true;
       clearInterval(heartbeat);
       unsubscribe();
     });

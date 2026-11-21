@@ -39,4 +39,29 @@ router.post('/admin/reindex', async (req, res, next) => {
   }
 });
 
+// POST /admin/reset-demo (Hardened reset endpoint per Section 1E)
+router.post('/admin/reset-demo', async (req, res) => {
+  try {
+    const result = await db.resetDemo();
+    let indexedDocs = 0;
+    try {
+      const indexResult = await bulkIndexAll();
+      indexedDocs = indexResult?.indexed || 0;
+    } catch (osErr) {
+      console.warn('Warning: bulkIndexAll failed during demo reset:', osErr.message);
+    }
+    return res.json({
+      success: true,
+      durationMs: result.durationMs,
+      indexedDocs
+    });
+  } catch (err) {
+    console.error('CRITICAL: /admin/reset-demo failed:', err);
+    return res.json({
+      success: false,
+      error: err.message || 'Reset demo operation failed'
+    });
+  }
+});
+
 module.exports = router;

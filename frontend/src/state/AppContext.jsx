@@ -3,16 +3,23 @@ import { apiGet, setActiveCustomerId, checkHealth } from '../api/client.js';
 
 const AppContext = createContext(null);
 
+const VALID_ROLES = ['customer', 'guest', 'store', 'admin'];
+
 export function AppProvider({ children }) {
   const [stores, setStores] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [selectedStore, setSelectedStoreState] = useState(null);
   const [selectedCustomer, setSelectedCustomerState] = useState(null);
   
-  // Role: 'customer' | 'guest' | 'store' | 'admin' | null
+  // Role: 'customer' | 'guest' | 'store' | 'admin' | null (validated on hydration)
   const [role, setRoleState] = useState(() => {
     try {
-      return localStorage.getItem('smartmart_role') || null;
+      const stored = localStorage.getItem('smartmart_role');
+      if (stored && VALID_ROLES.includes(stored)) {
+        return stored;
+      }
+      localStorage.removeItem('smartmart_role');
+      return null;
     } catch {
       return null;
     }
@@ -42,8 +49,12 @@ export function AppProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Set Role with persistence
+  // Set Role with persistence and validation
   const setRole = useCallback((newRole) => {
+    if (newRole && !VALID_ROLES.includes(newRole)) {
+      console.warn(`[AppContext] Invalid role '${newRole}', resetting to null`);
+      newRole = null;
+    }
     setRoleState(newRole);
     try {
       if (newRole) {

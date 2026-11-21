@@ -142,6 +142,13 @@ export default function Login() {
     <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 bg-[#F1F3F6] text-[#212121] font-sans relative z-10 selection:bg-[#2874F0] selection:text-white">
       {/* Centered White Card */}
       <div className="w-full max-w-[420px] bg-white border border-[#E0E0E0] rounded-[8px] p-8 shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex flex-col">
+        {/* Environment Banner per Section 2C */}
+        <div className="mb-4 p-2.5 rounded-[6px] bg-[#F8FAFC] border border-[#E0E0E0] text-center">
+          <p className="text-[12px] text-[#878787] italic leading-relaxed">
+            Demo Environment — Role-based access simulation. No real authentication required.
+          </p>
+        </div>
+
         {/* 1. SmartMart Wordmark */}
         <h1 className="text-[20px] font-semibold text-[#2874F0] tracking-tight text-center">
           SmartMart

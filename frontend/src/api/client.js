@@ -2,14 +2,23 @@ import { handleMockRequest } from './mock.js';
 
 const USE_MOCKS = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_USE_MOCKS !== undefined)
   ? import.meta.env.VITE_USE_MOCKS === 'true'
-  : true;
+  : false;
 
-const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE)
-  ? import.meta.env.VITE_API_BASE
-  : 'http://localhost:4000/api';
+function resolveApiBase() {
+  const envBase = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE;
+  if (envBase && envBase.trim()) {
+    return envBase.trim();
+  }
+  // Auto-detect origin in browser environment for same-origin or reverse-proxy deployments
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    console.warn('VITE_API_BASE not configured. Falling back to window.location.origin + "/api".');
+    return `${window.location.origin}/api`;
+  }
+  return '/api';
+}
 
-// Derived root URL for /health which is NOT under /api
-const ROOT_URL = API_BASE.replace(/\/api\/?$/, '');
+export const API_BASE = resolveApiBase();
+export const ROOT_URL = API_BASE.replace(/\/api\/?$/, '');
 
 export class ApiError extends Error {
   constructor(code, message, details = {}, status = 500) {
@@ -69,24 +78,19 @@ export async function apiClient(endpoint, options = {}) {
   if (USE_MOCKS) {
     return handleMockRequest(path, {
       method,
+      body,
       headers: {
         'x-customer-id': activeCustomerId,
-        ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
+        'idempotency-key': idempotencyKey,
         ...headers,
       },
-      body,
     });
   }
 
-  // Construct request headers
   const reqHeaders = {
-    'Accept': 'application/json',
+    'Content-Type': 'application/json',
     ...headers,
   };
-
-  if (body !== undefined) {
-    reqHeaders['Content-Type'] = 'application/json';
-  }
 
   // Inject X-Customer-Id on cart / checkout if available
   if (activeCustomerId && (path.startsWith('/cart') || path.startsWith('/checkout'))) {

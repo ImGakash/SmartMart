@@ -1,14 +1,18 @@
-import { ApiError } from './client.js';
+import { API_BASE } from './client.js';
 import { mockXRayBundle } from './mock.js';
 
+const USE_MOCKS = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_USE_MOCKS !== undefined)
+  ? import.meta.env.VITE_USE_MOCKS === 'true'
+  : false;
+
 /**
- * Robust EventSource helper with auto-reconnect, exponential backoff,
- * and silent recovery designed for stage Wi-Fi drops.
+ * Hardened EventSource helper with auto-reconnect, exponential backoff (1s - 30s),
+ * connection status propagation, and graceful unmount cleanup.
  *
  * @param {string} endpoint - Path, e.g. '/orders/:id/events' or '/xray/stream'
  * @param {object} callbacks
  * @param {function} callbacks.onMessage - Called with parsed data and event type
- * @param {function} callbacks.onStatusChange - Called with 'connecting' | 'connected' | 'reconnecting' | 'closed'
+ * @param {function} callbacks.onStatusChange - Called with 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'error'
  * @param {function} callbacks.onError - Called with error details
  * @returns {function} unsubscribe function
  */
@@ -19,13 +23,6 @@ export function subscribeSSE(endpoint, callbacks = {}) {
     onError,
   } = callbacks;
 
-  const USE_MOCKS = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_USE_MOCKS !== undefined)
-    ? import.meta.env.VITE_USE_MOCKS === 'true'
-    : true;
-  const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE)
-    ? import.meta.env.VITE_API_BASE
-    : 'http://localhost:4000/api';
-
   let eventSource = null;
   let isClosed = false;
   let reconnectAttempts = 0;
@@ -33,7 +30,7 @@ export function subscribeSSE(endpoint, callbacks = {}) {
   let mockInterval = null;
 
   function updateStatus(status) {
-    if (onStatusChange) {
+    if (onStatusChange && !isClosed) {
       onStatusChange(status);
     }
   }
@@ -46,8 +43,6 @@ export function subscribeSSE(endpoint, callbacks = {}) {
       updateStatus('connected');
 
       if (endpoint.includes('/events')) {
-        // Order timeline stages simulation: COMMITTED -> OUTBOX_PUBLISHED -> NOTIFIED -> INDEXED
-        // plus v1.2 DUPLICATE_SKIPPED if duplicate order
         const isDuplicateSimulation = endpoint.includes('replayed') || endpoint.includes('dup');
         const stages = [
           { stage: 'COMMITTED', delay: 400, detail: {} },
@@ -71,14 +66,11 @@ export function subscribeSSE(endpoint, callbacks = {}) {
           }, delay);
         });
       } else if (endpoint.includes('/xray/stream')) {
-        // Stream periodic xray metrics
         mockInterval = setInterval(() => {
           if (isClosed) return;
           try {
             if (onMessage) onMessage(mockXRayBundle(), 'metrics');
-          } catch (e) {
-            // ignore
-          }
+          } catch (e) {}
         }, 1000);
       }
     }, 200);
@@ -100,38 +92,46 @@ export function subscribeSSE(endpoint, callbacks = {}) {
     const fullUrl = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
     try {
-      eventSource = new EventSource(fullUrl);
+      eventSource = new EventSource(fullUrl, { withCredentials: true });
 
       eventSource.onopen = () => {
+        if (isClosed) {
+          eventSource.close();
+          return;
+        }
         reconnectAttempts = 0;
         updateStatus('connected');
       };
 
-      // Listen to generic messages
+      // Generic message listener
       eventSource.onmessage = (event) => {
+        if (isClosed) return;
         try {
           const data = JSON.parse(event.data);
           if (onMessage) onMessage(data, 'message');
-        } catch (e) {
+        } catch {
           if (onMessage) onMessage(event.data, 'message');
         }
       };
 
-      // Listen to custom named events: 'stage' and 'metrics'
+      // Custom event listener: 'stage'
       eventSource.addEventListener('stage', (event) => {
+        if (isClosed) return;
         try {
           const data = JSON.parse(event.data);
           if (onMessage) onMessage(data, 'stage');
-        } catch (e) {
+        } catch {
           if (onMessage) onMessage(event.data, 'stage');
         }
       });
 
+      // Custom event listener: 'metrics'
       eventSource.addEventListener('metrics', (event) => {
+        if (isClosed) return;
         try {
           const data = JSON.parse(event.data);
           if (onMessage) onMessage(data, 'metrics');
-        } catch (e) {
+        } catch {
           if (onMessage) onMessage(event.data, 'metrics');
         }
       });
@@ -146,9 +146,9 @@ export function subscribeSSE(endpoint, callbacks = {}) {
 
         if (onError) onError(err);
 
-        // Exponential backoff with jitter: 1s, 2s, 4s, capped at 10s
+        // Exponential backoff: 1s, 2s, 4s, 8s, up to 30s + small jitter
         reconnectAttempts++;
-        const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+        const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
         const jitter = Math.floor(Math.random() * 500);
         const waitMs = backoffMs + jitter;
 
@@ -156,9 +156,11 @@ export function subscribeSSE(endpoint, callbacks = {}) {
         reconnectTimeout = setTimeout(connect, waitMs);
       };
     } catch (err) {
-      if (onError) onError(err);
+      if (onError && !isClosed) onError(err);
+      if (isClosed) return;
+
       reconnectAttempts++;
-      const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+      const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 30000);
       reconnectTimeout = setTimeout(connect, backoffMs);
     }
   }
@@ -167,7 +169,10 @@ export function subscribeSSE(endpoint, callbacks = {}) {
 
   return () => {
     isClosed = true;
-    if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
     if (eventSource) {
       eventSource.close();
       eventSource = null;

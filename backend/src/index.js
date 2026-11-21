@@ -1,7 +1,7 @@
 const app = require('./api/app');
 const config = require('./config');
 const db = require('./db');
-const { connectProducer, disconnectAll } = require('./events/kafka');
+const { connectProducer, disconnectAll, kafkaHealthy } = require('./events/kafka');
 const outboxRelay = require('./events/outboxRelay');
 const notificationsConsumer = require('./events/notificationsConsumer');
 const searchIndexerConsumer = require('./events/searchIndexerConsumer');
@@ -15,7 +15,7 @@ async function bootstrap() {
   // 1. Verify DB is reachable
   try {
     await db.pool.query('SELECT 1');
-    console.log('Database connected successfully');
+    console.log('[Bootstrap] Database connected successfully');
   } catch (err) {
     console.error('Fatal: Failed to connect to database at startup:', err.message);
     process.exit(1);
@@ -25,86 +25,106 @@ async function bootstrap() {
   try {
     await ensureIndex();
     const indexResult = await bulkIndexAll();
-    console.log(`OpenSearch initial bulk index complete: ${indexResult.indexed} products indexed`);
+    console.log(`[Bootstrap] OpenSearch initial bulk index complete: ${indexResult.indexed} products indexed`);
   } catch (err) {
-    console.warn('Warning: OpenSearch index bootstrap failed or deferred:', err.message);
+    console.warn('[Bootstrap] Warning: OpenSearch index bootstrap deferred or degraded:', err.message);
   }
 
-  // 3. Connect Kafka producer
+  // 3. Connect Kafka producer & warm health probe
   try {
     await connectProducer();
+    await kafkaHealthy();
+    console.log('[Bootstrap] Kafka producer and admin probe ready');
   } catch (err) {
-    console.warn('Warning: Kafka producer connection failed at bootstrap:', err.message);
+    console.warn('[Bootstrap] Warning: Kafka connection failed at bootstrap:', err.message);
   }
 
   // 4. Start Outbox Relay worker loop
   outboxRelay.start();
+  console.log('[Bootstrap] Outbox relay loop started');
 
   // 5. Start Kafka Consumers (§8)
   try {
     await notificationsConsumer.start();
+    console.log('[Bootstrap] Notifications consumer started');
   } catch (err) {
-    console.warn('Warning: Notifications consumer failed to start:', err.message);
+    console.warn('[Bootstrap] Warning: Notifications consumer failed to start:', err.message);
   }
 
   try {
     await searchIndexerConsumer.start();
+    console.log('[Bootstrap] Search indexer consumer started');
   } catch (err) {
-    console.warn('Warning: Search indexer consumer failed to start:', err.message);
+    console.warn('[Bootstrap] Warning: Search indexer consumer failed to start:', err.message);
   }
 
   // 6. Start HTTP server
   server = app.listen(config.port, () => {
-    console.log(`SmartMart backend listening on http://localhost:${config.port}`);
-    console.log(`- Health check: http://localhost:${config.port}/health`);
-    console.log(`- API base URL: http://localhost:${config.port}/api`);
+    console.log(`[Bootstrap] SmartMart backend listening on http://localhost:${config.port}`);
+    console.log(`  - Health check: http://localhost:${config.port}/health`);
+    console.log(`  - API base URL: http://localhost:${config.port}/api`);
   });
 }
 
+let isShuttingDown = false;
+
 async function shutdown(signal) {
-  console.log(`${signal} received, shutting down gracefully...`);
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`\n[Shutdown] ${signal} received, beginning graceful shutdown...`);
 
-  try {
-    await notificationsConsumer.stop();
-    console.log('Notifications consumer stopped.');
-  } catch (e) {
-    console.warn('Error stopping notifications consumer:', e.message);
+  // Force-kill watchdog: 10 seconds maximum
+  const forceKillTimer = setTimeout(() => {
+    console.error('[Shutdown] Force-kill timeout (10s) reached. Exiting with code 1.');
+    process.exit(1);
+  }, 10000);
+  forceKillTimer.unref();
+
+  // 1. Stop accepting new HTTP connections
+  if (server) {
+    try {
+      await new Promise((resolve) => server.close(resolve));
+      console.log('[Shutdown] 1/5: HTTP server stopped accepting connections.');
+    } catch (e) {
+      console.warn('[Shutdown] Error closing HTTP server:', e.message);
+    }
   }
 
-  try {
-    await searchIndexerConsumer.stop();
-    console.log('Search indexer consumer stopped.');
-  } catch (e) {
-    console.warn('Error stopping search indexer consumer:', e.message);
-  }
-
+  // 2. Stop Outbox Relay loop
   try {
     await outboxRelay.stop();
-    console.log('Outbox relay stopped.');
+    console.log('[Shutdown] 2/5: Outbox relay worker stopped.');
   } catch (e) {
-    console.warn('Error stopping outbox relay:', e.message);
+    console.warn('[Shutdown] Error stopping outbox relay:', e.message);
   }
 
-  if (server) {
-    await new Promise((resolve) => server.close(resolve));
-    console.log('HTTP server closed.');
+  // 3. Stop Consumers
+  try {
+    await notificationsConsumer.stop();
+    await searchIndexerConsumer.stop();
+    console.log('[Shutdown] 3/5: Kafka consumers stopped.');
+  } catch (e) {
+    console.warn('[Shutdown] Error stopping consumers:', e.message);
   }
 
+  // 4. Disconnect Kafka clients (producer, admin, consumers)
   try {
     await disconnectAll();
-    console.log('Kafka connections closed.');
+    console.log('[Shutdown] 4/5: Kafka connections cleanly disconnected.');
   } catch (e) {
-    console.warn('Error disconnecting Kafka:', e.message);
+    console.warn('[Shutdown] Error disconnecting Kafka:', e.message);
   }
 
+  // 5. Close Database pool
   try {
     await db.pool.end();
-    console.log('Database pool closed.');
+    console.log('[Shutdown] 5/5: Database pool drained and closed.');
   } catch (e) {
-    console.warn('Error closing database pool:', e.message);
+    console.warn('[Shutdown] Error closing database pool:', e.message);
   }
 
-  console.log('Shutdown complete.');
+  clearTimeout(forceKillTimer);
+  console.log('[Shutdown] Graceful shutdown completed cleanly. Exiting.');
   process.exit(0);
 }
 
