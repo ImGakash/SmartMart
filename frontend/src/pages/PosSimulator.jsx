@@ -417,6 +417,7 @@ export default function PosSimulator() {
                         <ProductImage
                           src={p.imageUrl}
                           alt={p.name}
+                          name={p.name}
                           category={p.category}
                           sku={p.sku}
                           containerClassName="w-10 h-10 rounded-[6px] border border-slate-100 p-0.5 shrink-0 bg-white"
@@ -527,6 +528,7 @@ export default function PosSimulator() {
                               <ProductImage
                                 src={item.imageUrl}
                                 alt={item.name}
+                                name={item.name}
                                 category={item.category}
                                 sku={item.sku}
                                 containerClassName="w-7 h-7 rounded border border-slate-100 shrink-0 hidden sm:flex"

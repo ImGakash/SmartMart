@@ -340,6 +340,7 @@ export default function Storefront() {
                   <ProductImage
                     src={product.imageUrl}
                     alt={product.name}
+                    name={product.name}
                     category={product.category}
                     sku={product.sku}
                     className="group-hover:scale-105 transition-transform duration-200"
