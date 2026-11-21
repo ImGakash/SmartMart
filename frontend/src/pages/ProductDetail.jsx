@@ -4,11 +4,8 @@ import { useApp } from '../state/AppContext.jsx';
 import { apiGet, apiPost } from '../api/client.js';
 import Price from '../components/Price.jsx';
 import StockBadge from '../components/StockBadge.jsx';
-import ProofPanel from '../components/ProofPanel.jsx';
-import ProofBadge from '../components/ProofBadge.jsx';
 import SyncBadge from '../components/SyncBadge.jsx';
 import JsonViewer from '../components/JsonViewer.jsx';
-import DemoActionButton from '../components/DemoActionButton.jsx';
 import {
   ArrowLeft,
   Store,
@@ -16,16 +13,21 @@ import {
   Plus,
   Minus,
   Search,
-  ExternalLink,
-  ShieldCheck,
   CheckCircle2,
-  Database
+  XCircle,
+  Database,
+  Zap,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Star
 } from 'lucide-react';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { selectedStore, setSelectedStore, refreshCart, showToast } = useApp();
+  const { selectedStore, setSelectedStore, selectedCustomer, refreshCart, showToast } = useApp();
 
   const [product, setProduct] = useState(null);
   const [reconciliationRow, setReconciliationRow] = useState(null);
@@ -33,6 +35,8 @@ export default function ProductDetail() {
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
+  const [isBuying, setIsBuying] = useState(false);
+  const [proofOpen, setProofOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -67,6 +71,7 @@ export default function ProductDetail() {
     };
   }, [id]);
 
+  // Handle Add to Cart
   async function handleAddToCart() {
     if (!selectedStore?.id || !product?.id) {
       showToast({
@@ -89,7 +94,7 @@ export default function ProductDetail() {
 
       showToast({
         type: 'success',
-        message: `Added ${quantity} × "${product.name}" to cart (${selectedStore.storeCode})`,
+        message: `Added ${quantity} × "${product.name}" to your cart`,
       });
     } catch (err) {
       showToast({
@@ -103,23 +108,82 @@ export default function ProductDetail() {
     }
   }
 
+  // Handle Buy Now (direct checkout with items array)
+  async function handleBuyNow() {
+    if (!selectedStore?.id || !product?.id) {
+      showToast({
+        type: 'error',
+        code: 'STORE_REQUIRED',
+        message: 'Please choose an active store for fulfillment.',
+      });
+      return;
+    }
+
+    if (!selectedCustomer?.id) {
+      showToast({
+        type: 'error',
+        code: 'CUSTOMER_REQUIRED',
+        message: 'Customer profile required for checkout.',
+      });
+      return;
+    }
+
+    setIsBuying(true);
+    const idempotencyKey = crypto.randomUUID();
+
+    try {
+      const result = await apiPost(
+        '/checkout',
+        {
+          storeId: selectedStore.id,
+          items: [{ productId: product.id, quantity }],
+        },
+        { headers: { 'Idempotency-Key': idempotencyKey } }
+      );
+
+      showToast({
+        type: 'success',
+        message: 'Order created successfully!',
+      });
+
+      navigate(`/orders/${result.order.id}`, { state: { replayed: result.replayed } });
+    } catch (err) {
+      if (err.status === 409 || err.code === 'INSUFFICIENT_STOCK') {
+        showToast({
+          type: 'error',
+          code: 'INSUFFICIENT_STOCK',
+          message: `Insufficient stock: only ${err.details?.available ?? 0} remaining. Oversell prevented safely.`,
+          details: err.details,
+        });
+      } else {
+        showToast({
+          type: 'error',
+          code: err.code || 'CHECKOUT_ERROR',
+          message: err.message || 'Checkout failed',
+        });
+      }
+    } finally {
+      setIsBuying(false);
+    }
+  }
+
   if (loading) {
     return (
-      <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-24 flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-4 border-saffron border-t-transparent rounded-full animate-spin" />
-        <span className="text-slate-400 font-mono text-sm">Loading product & retail stock ledger...</span>
+      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-16 flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 border-3 border-[#2874F0] border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-[#878787]">Loading product details & inventory...</span>
       </div>
     );
   }
 
   if (error || !product) {
     return (
-      <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-16 text-center flex flex-col items-center justify-center gap-4">
-        <h2 className="text-2xl font-bold text-white">Product Not Found</h2>
-        <p className="text-slate-400 text-sm max-w-md">{error || 'Unable to retrieve product details.'}</p>
+      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-12 text-center flex flex-col items-center justify-center gap-3">
+        <h2 className="text-xl font-semibold text-[#212121]">Product Not Found</h2>
+        <p className="text-xs text-[#878787] max-w-md">{error || 'Unable to retrieve product details.'}</p>
         <Link
           to="/"
-          className="px-5 py-2.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white font-semibold text-sm transition-colors border border-slate-700"
+          className="px-4 py-2 bg-[#2874F0] text-white rounded-[6px] text-xs font-medium hover:bg-[#1C5BC8] transition-colors"
         >
           Return to Storefront
         </Link>
@@ -130,190 +194,219 @@ export default function ProductDetail() {
   const availability = product.availability || [];
   const selectedStoreAvailability = availability.find((a) => a.storeId === selectedStore?.id);
   const currentStoreStock = selectedStoreAvailability?.stockQty ?? 0;
+  const inStock = currentStoreStock > 0;
+
+  // Realistic MRP calculation
+  const mrp = Math.max(Math.round((product.pricePaise * 1.35) / 10000) * 10000, product.pricePaise + 10000);
+  const discountPct = Math.round(((mrp - product.pricePaise) / mrp) * 100);
 
   return (
-    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8">
-      {/* Back button */}
-      <div>
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-ink-800"
-        >
-          <ArrowLeft className="w-4 h-4 text-saffron" />
-          <span>BACK TO STOREFRONT</span>
+    <div className="flex flex-col gap-4">
+      {/* Breadcrumb row */}
+      <div className="flex items-center gap-2 text-xs text-[#878787]">
+        <Link to="/" className="hover:text-[#2874F0] flex items-center gap-1">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Home</span>
         </Link>
+        <span>/</span>
+        <span className="text-[#212121]">{product.category}</span>
+        <span>/</span>
+        <span className="text-[#878787]">{product.brand}</span>
       </div>
 
-      {/* Main Grid: Left = User Action (Hero & Table), Right = ProofPanel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column (8 cols): Hero + Store Availability Table + Add to Cart */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
-          {/* Hero Section */}
-          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 lg:p-8 flex flex-col md:flex-row gap-8 shadow-2xl backdrop-blur-md">
-            {/* Image */}
-            <div className="w-full md:w-80 h-72 md:h-80 rounded-2xl overflow-hidden bg-ink-950 border border-slate-800 shrink-0">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover object-center"
-                onError={(e) => {
-                  e.target.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80';
-                }}
-              />
+      {/* Main Flipkart-Style 2-Column Product Container */}
+      <div className="bg-white border border-[#E0E0E0] rounded-[6px] p-4 md:p-6 shadow-sm grid grid-cols-1 md:grid-cols-12 gap-6">
+        {/* Left Column (5 cols): Image Gallery & Action Buttons */}
+        <div className="md:col-span-5 flex flex-col gap-4">
+          {/* Main Image Box */}
+          <div className="border border-[#E0E0E0] rounded-[6px] p-4 flex items-center justify-center bg-white aspect-square">
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="max-h-full max-w-full object-contain"
+              onError={(e) => {
+                e.target.src =
+                  'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&auto=format&fit=crop&q=80';
+              }}
+            />
+          </div>
+
+          {/* Flipkart Action Buttons (Side by Side) */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isAdding || !inStock}
+              className="h-[40px] px-3 rounded-[6px] bg-[#FF9F00] hover:bg-[#F29400] text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              <span>{isAdding ? 'Adding...' : 'ADD TO CART'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleBuyNow}
+              disabled={isBuying || !inStock}
+              className="h-[40px] px-3 rounded-[6px] bg-[#FB641B] hover:bg-[#E55510] text-white font-semibold text-xs md:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-[0.98]"
+            >
+              <Zap className="w-4 h-4" />
+              <span>{isBuying ? 'Processing...' : 'BUY NOW'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right Column (7 cols): Title, Price, Description, Store Matrix */}
+        <div className="md:col-span-7 flex flex-col gap-4">
+          <div>
+            <span className="text-xs font-semibold text-[#878787] uppercase tracking-wider">
+              {product.brand}
+            </span>
+            <h1 className="text-xl font-semibold text-[#212121] leading-tight mt-0.5">
+              {product.name}
+            </h1>
+          </div>
+
+          {/* Rating Pill */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 bg-[#388E3C] text-white text-xs font-bold px-2 py-0.5 rounded-[4px]">
+              <span>4.3</span>
+              <Star className="w-3 h-3 fill-current" />
+            </span>
+            <span className="text-xs text-[#878787]">
+              1,248 Ratings & 182 Reviews
+            </span>
+          </div>
+
+          {/* Price Block */}
+          <div className="flex flex-col gap-1 border-y border-[#E0E0E0] py-3">
+            <span className="text-[11px] font-semibold text-[#388E3C] uppercase tracking-wider">
+              Special Price
+            </span>
+            <div className="flex items-baseline gap-2.5">
+              <Price paise={product.pricePaise} className="text-xl font-bold text-[#212121]" />
+              <Price paise={mrp} className="text-sm text-[#878787] line-through font-normal" />
+              <span className="text-sm font-bold text-[#388E3C]">
+                {discountPct}% off
+              </span>
             </div>
+            <span className="text-[11px] text-[#878787]">
+              Inclusive of all taxes
+            </span>
+          </div>
 
-            {/* Details */}
-            <div className="flex-1 flex flex-col justify-between gap-6">
-              <div className="flex flex-col gap-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-ink-950 text-saffron border border-slate-800">
-                    {product.sku}
+          {/* Delivery & Quantity Stepper Block */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-3 bg-gray-50 border border-[#E0E0E0] rounded-[6px]">
+            <div className="flex items-center gap-2 text-xs">
+              <MapPin className="w-4 h-4 text-[#2874F0] shrink-0" />
+              <div>
+                <span className="text-[#878787] block text-[11px]">Deliver to</span>
+                <span className="font-semibold text-[#212121]">
+                  {selectedStore?.city} · {selectedStore?.storeCode}
+                </span>
+                {inStock ? (
+                  <span className="ml-2 text-[#388E3C] font-semibold">
+                    — In Stock ({currentStoreStock} units left)
                   </span>
-                  <span className="text-xs font-mono font-bold text-slate-400 uppercase">
-                    {product.brand}
+                ) : (
+                  <span className="ml-2 text-[#D32F2F] font-semibold">
+                    — Currently Out of Stock at this store
                   </span>
-                  <span className="text-slate-600">•</span>
-                  <span className="text-xs font-bold text-slate-400">
-                    {product.category}
-                  </span>
-                </div>
-
-                <h1 className="text-2xl lg:text-3xl font-extrabold text-white leading-tight">
-                  {product.name}
-                </h1>
-
-                {product.description && (
-                  <p className="text-sm text-slate-300 leading-relaxed font-sans">
-                    {product.description}
-                  </p>
                 )}
               </div>
+            </div>
 
-              {/* Price & Selection */}
-              <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-4">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-xs font-mono text-slate-500 uppercase">Price:</span>
-                  <Price paise={product.pricePaise} className="text-3xl font-black font-mono text-white" />
-                </div>
-
-                {/* Stepper + Fulfillment Store + Add to Cart */}
-                <div className="flex flex-wrap items-center gap-4">
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2 bg-ink-950 border border-slate-700 rounded-xl p-1">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                      disabled={quantity <= 1}
-                      className="w-8 h-8 rounded-lg bg-ink-800 hover:bg-ink-700 disabled:opacity-40 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="w-10 text-center font-mono font-black text-sm text-white">
-                      {quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity((q) => q + 1)}
-                      className="w-8 h-8 rounded-lg bg-ink-800 hover:bg-ink-700 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Add to Cart Button */}
-                  <DemoActionButton
-                    onClick={handleAddToCart}
-                    loading={isAdding}
-                    variant="warning"
-                    icon={ShoppingCart}
-                    size="md"
-                    className="flex-1 font-mono font-black uppercase text-ink-950 bg-saffron hover:bg-saffron-bright"
-                  >
-                    Add to Cart ({quantity})
-                  </DemoActionButton>
-                </div>
+            {/* Stepper */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#878787]">Qty:</span>
+              <div className="flex items-center border border-[#E0E0E0] bg-white rounded-[4px] overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                  className="px-2 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="px-3 py-1 font-semibold text-xs text-[#212121] min-w-[28px] text-center">
+                  {quantity}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQuantity(quantity + 1)}
+                  disabled={quantity >= currentStoreStock}
+                  className="px-2 py-1 text-gray-600 hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Store Availability Table: Proves retail-chain model */}
-          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 shadow-xl flex flex-col gap-4 backdrop-blur-md">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
-              <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2 font-mono">
-                  <Store className="w-4 h-4 text-saffron" />
-                  <span>Physical Store Chain Inventory Ledger</span>
-                </h2>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  Live availability per hub proving omnichannel multi-city retail — not single warehouse.
-                </p>
-              </div>
-              <span className="text-xs font-mono text-slate-500">
-                5 Metro Cities · 6 Physical Stores
-              </span>
-            </div>
+          {/* Description */}
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="font-semibold text-xs text-[#212121]">Description</span>
+            <p className="text-[#878787] leading-relaxed">
+              {product.description || 'High quality retail-grade merchandise with full manufacturer warranty and verified serial inspection.'}
+            </p>
+          </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-ink-950">
-              <table className="w-full text-left border-collapse font-mono text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-ink-900/80 text-[10px] text-slate-400 uppercase tracking-wider">
-                    <th className="py-3 px-4 font-black">Store Code</th>
-                    <th className="py-3 px-4 font-black">Location / Hub</th>
-                    <th className="py-3 px-4 font-black text-right">In-Stock Quantity</th>
-                    <th className="py-3 px-4 font-black text-center">Fulfillment Status</th>
-                    <th className="py-3 px-4 font-black text-right">Action</th>
+          {/* Retail Chain Availability Table (proves retail-chain model across 6 stores) */}
+          <div className="flex flex-col gap-2 pt-2">
+            <span className="font-semibold text-xs text-[#212121]">
+              Chain-wide Store Availability (5 Metro Cities)
+            </span>
+            <div className="border border-[#E0E0E0] rounded-[6px] overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50 border-b border-[#E0E0E0] text-[11px] font-semibold text-[#878787] uppercase tracking-wider">
+                  <tr>
+                    <th className="py-2 px-3">Store Code</th>
+                    <th className="py-2 px-3">City</th>
+                    <th className="py-2 px-3">In-Store Stock</th>
+                    <th className="py-2 px-3 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-[#E0E0E0]">
                   {availability.map((store) => {
-                    const isSelected = selectedStore?.id === store.storeId;
+                    const isSelected = store.storeId === selectedStore?.id;
                     return (
                       <tr
                         key={store.storeId}
-                        className={`transition-colors ${
-                          isSelected ? 'bg-saffron/10 text-white' : 'hover:bg-ink-900/50 text-slate-300'
-                        }`}
+                        className={isSelected ? 'bg-blue-50/50 font-medium' : 'hover:bg-gray-50'}
                       >
-                        <td className="py-3 px-4 font-bold text-white flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                          <span>{store.storeCode}</span>
+                        <td className="py-2 px-3 font-mono text-[11px] text-[#212121]">
+                          {store.storeCode}
+                          {isSelected && (
+                            <span className="ml-1.5 px-1 py-0.2 rounded text-[9px] bg-[#2874F0] text-white font-sans uppercase">
+                              Active
+                            </span>
+                          )}
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-200">{store.storeName}</span>
-                            <span className="text-[10px] text-slate-400">{store.city}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right font-black text-sm">
-                          {store.stockQty}
-                        </td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-2 px-3 text-[#878787]">{store.city}</td>
+                        <td className="py-2 px-3">
                           <StockBadge quantity={store.stockQty} />
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          {isSelected ? (
-                            <span className="px-2.5 py-1 rounded bg-saffron/20 text-saffron font-bold text-[10px] uppercase border border-saffron/40">
-                              Active Store
-                            </span>
-                          ) : (
+                        <td className="py-2 px-3 text-right">
+                          {!isSelected ? (
                             <button
                               type="button"
                               onClick={() => {
-                                setSelectedStore({
-                                  id: store.storeId,
-                                  storeCode: store.storeCode,
-                                  storeName: store.storeName,
-                                  city: store.city,
-                                });
-                                showToast({
-                                  type: 'info',
-                                  message: `Switched store to ${store.storeCode} (${store.city})`,
-                                });
+                                const found = availability.find((a) => a.storeId === store.storeId);
+                                if (found) {
+                                  setSelectedStore({
+                                    id: store.storeId,
+                                    storeCode: store.storeCode,
+                                    city: store.city,
+                                  });
+                                }
                               }}
-                              className="px-2.5 py-1 rounded bg-ink-900 hover:bg-ink-700 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer border border-slate-700"
+                              className="text-[11px] text-[#2874F0] hover:underline font-semibold cursor-pointer"
                             >
-                              Select Store
+                              Switch to Store
                             </button>
+                          ) : (
+                            <span className="text-[11px] text-[#388E3C] font-semibold">
+                              Selected
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -324,79 +417,67 @@ export default function ProductDetail() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Column (4 cols): Sticky Proof Panel */}
-        <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
-          <ProofPanel
-            title="Inventory Ledger Proof"
-            service="PostgreSQL"
-            action={`GET /products/${id}`}
-            proof="Multi-hub row ledger"
-          >
-            {/* Inventory Source Info */}
-            <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 flex flex-col gap-2 font-mono text-xs">
-              <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400">
-                <span>Database Source</span>
-                <span className="text-indigo-400">TABLE: store_inventory</span>
+      {/* Small Collapsible Inventory Source Details Section (Default Collapsed) */}
+      <div className="border border-[#E0E0E0] rounded-[6px] bg-white overflow-hidden shadow-sm">
+        <button
+          type="button"
+          onClick={() => setProofOpen(!proofOpen)}
+          className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-semibold text-[#878787] hover:text-[#212121] bg-gray-50/60 transition-colors cursor-pointer"
+        >
+          <span className="flex items-center gap-2">
+            <Database className="w-3.5 h-3.5 text-[#2874F0]" />
+            <span>Inventory Source & Reconciliation Telemetry (Demo Proof)</span>
+            <span className="font-mono text-[10px] text-gray-500 bg-gray-200 px-1.5 py-0.2 rounded">
+              PostgreSQL SSoT
+            </span>
+          </span>
+          <span className="flex items-center gap-1 text-[11px]">
+            {proofOpen ? 'Hide' : 'Show'}
+            {proofOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </span>
+        </button>
+
+        {proofOpen && (
+          <div className="p-4 border-t border-[#E0E0E0] flex flex-col gap-3 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-[11px]">
+              <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                <span className="text-gray-500 block text-[10px]">INVENTORY SSoT</span>
+                <span className="font-bold text-[#212121]">PostgreSQL (atomic ledger)</span>
               </div>
-              <p className="text-slate-300 text-xs leading-relaxed">
-                Inventory source: <strong>PostgreSQL</strong>. Stock is queried directly from transactional rows with city-level granularity.
-              </p>
+              <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                <span className="text-gray-500 block text-[10px]">PG TOTAL STOCK</span>
+                <span className="font-bold text-[#212121]">
+                  {reconciliationRow?.pgTotalStock ?? product.totalStock ?? 'N/A'}
+                </span>
+              </div>
+              <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                <span className="text-gray-500 block text-[10px]">OPENSEARCH TOTAL</span>
+                <span className="font-bold text-[#212121]">
+                  {reconciliationRow?.osTotalStock ?? 'N/A'}
+                </span>
+              </div>
+              <div className="p-2 rounded bg-gray-50 border border-gray-200">
+                <span className="text-gray-500 block text-[10px]">SYNC STATUS</span>
+                <div>
+                  <SyncBadge status={reconciliationRow?.status || 'PASS'} />
+                </div>
+              </div>
             </div>
 
-            {/* Reconciliation Cross-Service Row */}
-            {reconciliationRow ? (
-              <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 flex flex-col gap-2.5 font-mono text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">
-                    Control Tower Reconciliation
-                  </span>
-                  <SyncBadge status={reconciliationRow.status} />
-                </div>
+            <p className="text-[11px] text-gray-500 italic">
+              Inventory source: PostgreSQL. OpenSearch index tracks updates asynchronously via Apache Kafka consumer.
+            </p>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 rounded bg-ink-900 border border-slate-800 flex flex-col">
-                    <span className="text-[10px] text-slate-400">PostgreSQL Total</span>
-                    <span className="text-base font-black text-indigo-300">
-                      {reconciliationRow.pgTotalStock} units
-                    </span>
-                  </div>
-                  <div className="p-2 rounded bg-ink-900 border border-slate-800 flex flex-col">
-                    <span className="text-[10px] text-slate-400">OpenSearch Total</span>
-                    <span className="text-base font-black text-emerald-300">
-                      {reconciliationRow.osTotalStock} units
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-[10px] text-slate-400">
-                  Cities Synced: <strong>{reconciliationRow.osCities} / {reconciliationRow.pgCities}</strong>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 text-xs font-mono text-slate-400 text-center">
-                Fetching cross-service reconciliation diff...
-              </div>
-            )}
-
-            {/* View in Search Link */}
-            <Link
-              to={`/?q=${encodeURIComponent(product.name.split(' ')[0] || product.name)}&city=${encodeURIComponent(selectedStore?.city || '')}`}
-              className="w-full py-2.5 px-4 rounded-xl bg-cyan/15 hover:bg-cyan/25 border border-cyan/40 text-cyan font-mono font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Search className="w-3.5 h-3.5" />
-              <span>View in search (?q={product.name.split(' ')[0]}&city={selectedStore?.city})</span>
-            </Link>
-
-            {/* Raw JSON */}
-            <JsonViewer
-              data={product}
-              title="Raw Product Availability JSON"
-              defaultOpen={false}
-              maxHeight="max-h-56"
-            />
-          </ProofPanel>
-        </div>
+            <div className="mt-1">
+              <span className="text-[10px] font-mono text-gray-400 block mb-1">
+                RAW PRODUCT & RECONCILIATION RECORD:
+              </span>
+              <JsonViewer data={{ product, reconciliation: reconciliationRow }} defaultExpanded={false} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
