@@ -3,20 +3,104 @@
 @tailwind utilities;
 
 :root {
+  --ink-950: #070B16;
+  --ink-900: #0B1020;
+  --ink-800: #101730;
+  --ink-700: #182142;
+  --line: rgba(148, 163, 184, 0.14);
+  --indigo: #4F46E5;
+  --indigo-bright: #6366F1;
+  --violet: #8B5CF6;
+  --saffron: #F59E0B;
+  --saffron-bright: #FBBF24;
+  --saffron-soft: #FCD34D;
+  --cyan: #22D3EE;
+  --cyan-deep: #06B6D4;
+  --pass: #34D399;
+  --warn: #FBBF24;
+  --fail: #F87171;
+  --info: #38BDF8;
+  --text: #EEF2FF;
+  --muted: #94A3B8;
+  --faint: #64748B;
   color-scheme: dark;
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #07090e;
-  color: #f1f5f9;
+  font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--ink-950);
+  color: var(--text);
+  overflow-x: hidden;
+  position: relative;
 }
 
-/* Custom scrollbars */
+/* Global ambient background glow */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 800px at 10% -10%, rgba(79, 70, 229, 0.16), transparent 70%),
+    radial-gradient(circle 800px at 90% 110%, rgba(34, 211, 238, 0.10), transparent 70%);
+}
+
+/* Subtle SVG grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Glass card utility */
+.glass-panel {
+  background-color: rgba(16, 23, 48, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+}
+
+.glass-panel-hover {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-panel-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 12px 30px -10px rgba(7, 11, 22, 0.8), 0 0 20px -5px rgba(99, 102, 241, 0.15);
+}
+
+/* Customer mesh background helper */
+.customer-mesh {
+  background:
+    radial-gradient(circle 600px at 20% 0%, rgba(79, 70, 229, 0.22), transparent 70%),
+    radial-gradient(circle 500px at 80% 20%, rgba(245, 158, 11, 0.12), transparent 60%),
+    radial-gradient(circle 400px at 50% 50%, rgba(139, 92, 246, 0.15), transparent 70%);
+}
+
+/* Admin control room grid background */
+.admin-grid-pattern {
+  background-image:
+    linear-gradient(to right, rgba(34, 211, 238, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 211, 238, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* POS Terminal dark styling */
+.pos-terminal-theme {
+  background-color: #050811;
+  color: #FBBF24;
+}
+
+/* Custom scrollbars themed to tokens */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #334155 #0d111c;
+  scrollbar-color: #182142 #070B16;
 }
 
 ::-webkit-scrollbar {
@@ -24,14 +108,15 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0d111c;
+  background: var(--ink-950);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: var(--ink-700);
   border-radius: 4px;
+  border: 2px solid var(--ink-950);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #253366;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -39,6 +124,6 @@ body {
   height: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--ink-700);
   border-radius: 3px;
 }
