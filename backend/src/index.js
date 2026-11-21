@@ -3,6 +3,8 @@ const config = require('./config');
 const db = require('./db');
 const { connectProducer, disconnectAll } = require('./events/kafka');
 const outboxRelay = require('./events/outboxRelay');
+const notificationsConsumer = require('./events/notificationsConsumer');
+const searchIndexerConsumer = require('./events/searchIndexerConsumer');
 const { ensureIndex, bulkIndexAll } = require('./search/productIndex');
 
 let server = null;
@@ -38,7 +40,20 @@ async function bootstrap() {
   // 4. Start Outbox Relay worker loop
   outboxRelay.start();
 
-  // 5. Start HTTP server
+  // 5. Start Kafka Consumers (§8)
+  try {
+    await notificationsConsumer.start();
+  } catch (err) {
+    console.warn('Warning: Notifications consumer failed to start:', err.message);
+  }
+
+  try {
+    await searchIndexerConsumer.start();
+  } catch (err) {
+    console.warn('Warning: Search indexer consumer failed to start:', err.message);
+  }
+
+  // 6. Start HTTP server
   server = app.listen(config.port, () => {
     console.log(`SmartMart backend listening on http://localhost:${config.port}`);
     console.log(`- Health check: http://localhost:${config.port}/health`);
@@ -48,6 +63,21 @@ async function bootstrap() {
 
 async function shutdown(signal) {
   console.log(`${signal} received, shutting down gracefully...`);
+
+  try {
+    await notificationsConsumer.stop();
+    console.log('Notifications consumer stopped.');
+  } catch (e) {
+    console.warn('Error stopping notifications consumer:', e.message);
+  }
+
+  try {
+    await searchIndexerConsumer.stop();
+    console.log('Search indexer consumer stopped.');
+  } catch (e) {
+    console.warn('Error stopping search indexer consumer:', e.message);
+  }
+
   try {
     await outboxRelay.stop();
     console.log('Outbox relay stopped.');

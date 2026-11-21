@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { randomUUID } = require('crypto');
 const db = require('../../db');
+const { bulkIndexAll } = require('../../search/productIndex');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -96,6 +97,11 @@ router.post('/demo/race', async (req, res, next) => {
 router.post('/demo/reset', async (req, res, next) => {
   try {
     const result = await db.resetDemo();
+    try {
+      await bulkIndexAll();
+    } catch (osErr) {
+      console.warn('Warning: bulkIndexAll failed during demo reset:', osErr.message);
+    }
     res.json(result);
   } catch (err) {
     next(err);
