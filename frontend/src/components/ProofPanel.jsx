@@ -15,9 +15,9 @@ const SERVICE_CONFIG = {
     icon: Radio,
   },
   OpenSearch: {
-    bg: 'bg-sky-500/15',
-    border: 'border-sky-500/40',
-    text: 'text-sky-400',
+    bg: 'bg-cyan/15',
+    border: 'border-cyan/40',
+    text: 'text-cyan',
     icon: Search,
   },
   System: {
@@ -46,7 +46,7 @@ export default function ProofPanel({
 
   return (
     <aside
-      className={`bg-slate-900/95 border-2 border-slate-800 rounded-2xl p-5 lg:p-6 shadow-2xl backdrop-blur-md flex flex-col gap-4 text-slate-100 ${
+      className={`bg-ink-800/80 border border-line rounded-3xl p-5 lg:p-6 shadow-2xl backdrop-blur-md flex flex-col gap-4 text-slate-100 ${
         sticky ? 'sticky top-24' : ''
       } ${className}`}
       aria-label={`${title} Proof Panel`}
@@ -61,7 +61,7 @@ export default function ProofPanel({
               <ServiceIcon className="w-3.5 h-3.5" />
               <span>{service}</span>
             </span>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">
               LIVE EVIDENCE
             </span>
           </div>
@@ -74,16 +74,16 @@ export default function ProofPanel({
 
       {/* Action / Proof Metadata Pill */}
       {(action || proof) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] font-mono">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-ink-950 border border-slate-800 text-[11px] font-mono">
           {action && (
             <div className="flex flex-col">
-              <span className="text-slate-500 uppercase text-[9px] font-bold">Action Taken</span>
+              <span className="text-slate-400 uppercase text-[9px] font-bold">Action Taken</span>
               <span className="text-slate-200 font-semibold truncate">{action}</span>
             </div>
           )}
           {proof && (
             <div className="flex flex-col">
-              <span className="text-slate-500 uppercase text-[9px] font-bold">Verified Proof</span>
+              <span className="text-slate-400 uppercase text-[9px] font-bold">Verified Proof</span>
               <span className="text-emerald-400 font-semibold truncate">{proof}</span>
             </div>
           )}

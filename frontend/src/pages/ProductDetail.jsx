@@ -106,7 +106,7 @@ export default function ProductDetail() {
   if (loading) {
     return (
       <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-24 flex flex-col items-center justify-center gap-4">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-saffron border-t-transparent rounded-full animate-spin" />
         <span className="text-slate-400 font-mono text-sm">Loading product & retail stock ledger...</span>
       </div>
     );
@@ -119,7 +119,7 @@ export default function ProductDetail() {
         <p className="text-slate-400 text-sm max-w-md">{error || 'Unable to retrieve product details.'}</p>
         <Link
           to="/"
-          className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-sm transition-colors"
+          className="px-5 py-2.5 rounded-xl bg-ink-800 hover:bg-ink-700 text-white font-semibold text-sm transition-colors border border-slate-700"
         >
           Return to Storefront
         </Link>
@@ -137,9 +137,9 @@ export default function ProductDetail() {
       <div>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-slate-900"
+          className="inline-flex items-center gap-2 text-xs font-mono font-bold text-slate-400 hover:text-white transition-colors p-2 rounded-xl hover:bg-ink-800"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-saffron" />
           <span>BACK TO STOREFRONT</span>
         </Link>
       </div>
@@ -149,9 +149,9 @@ export default function ProductDetail() {
         {/* Left Column (8 cols): Hero + Store Availability Table + Add to Cart */}
         <div className="lg:col-span-8 flex flex-col gap-8">
           {/* Hero Section */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row gap-8 shadow-xl">
+          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 lg:p-8 flex flex-col md:flex-row gap-8 shadow-2xl backdrop-blur-md">
             {/* Image */}
-            <div className="w-full md:w-80 h-72 md:h-80 rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 shrink-0">
+            <div className="w-full md:w-80 h-72 md:h-80 rounded-2xl overflow-hidden bg-ink-950 border border-slate-800 shrink-0">
               <img
                 src={product.imageUrl}
                 alt={product.name}
@@ -166,7 +166,7 @@ export default function ProductDetail() {
             <div className="flex-1 flex flex-col justify-between gap-6">
               <div className="flex flex-col gap-2.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-950 text-indigo-400 border border-slate-800">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-ink-950 text-saffron border border-slate-800">
                     {product.sku}
                   </span>
                   <span className="text-xs font-mono font-bold text-slate-400 uppercase">
@@ -183,40 +183,38 @@ export default function ProductDetail() {
                 </h1>
 
                 {product.description && (
-                  <p className="text-sm text-slate-400 leading-relaxed">
+                  <p className="text-sm text-slate-300 leading-relaxed font-sans">
                     {product.description}
                   </p>
                 )}
               </div>
 
               {/* Price & Selection */}
-              <div className="pt-4 border-t border-slate-800 flex flex-col gap-4">
+              <div className="pt-4 border-t border-slate-800/80 flex flex-col gap-4">
                 <div className="flex items-baseline gap-3">
                   <span className="text-xs font-mono text-slate-500 uppercase">Price:</span>
-                  <Price paise={product.pricePaise} className="text-3xl font-black text-white" />
+                  <Price paise={product.pricePaise} className="text-3xl font-black font-mono text-white" />
                 </div>
 
                 {/* Stepper + Fulfillment Store + Add to Cart */}
                 <div className="flex flex-wrap items-center gap-4">
                   {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl p-1">
+                  <div className="flex items-center gap-2 bg-ink-950 border border-slate-700 rounded-xl p-1">
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       disabled={quantity <= 1}
-                      className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-slate-200 flex items-center justify-center transition-colors"
-                      title="Decrease quantity"
+                      className="w-8 h-8 rounded-lg bg-ink-800 hover:bg-ink-700 disabled:opacity-40 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-8 text-center font-mono font-bold text-sm text-white">
+                    <span className="w-10 text-center font-mono font-black text-sm text-white">
                       {quantity}
                     </span>
                     <button
                       type="button"
                       onClick={() => setQuantity((q) => q + 1)}
-                      className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 flex items-center justify-center transition-colors"
-                      title="Increase quantity"
+                      className="w-8 h-8 rounded-lg bg-ink-800 hover:bg-ink-700 text-white font-bold flex items-center justify-center transition-colors cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
@@ -226,82 +224,97 @@ export default function ProductDetail() {
                   <DemoActionButton
                     onClick={handleAddToCart}
                     loading={isAdding}
-                    variant="primary"
+                    variant="warning"
                     icon={ShoppingCart}
-                    className="flex-1 min-w-[200px]"
+                    size="md"
+                    className="flex-1 font-mono font-black uppercase text-ink-950 bg-saffron hover:bg-saffron-bright"
                   >
-                    Add {quantity} to Cart ({selectedStore?.storeCode})
+                    Add to Cart ({quantity})
                   </DemoActionButton>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Store Availability Table: Proves Retail Chain Model */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-7 shadow-xl flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          {/* Store Availability Table: Proves retail-chain model */}
+          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 shadow-xl flex flex-col gap-4 backdrop-blur-md">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
               <div>
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <Store className="w-5 h-5 text-indigo-400" />
-                  <span>Physical Store Network Inventory</span>
-                </h3>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2 font-mono">
+                  <Store className="w-4 h-4 text-saffron" />
+                  <span>Physical Store Chain Inventory Ledger</span>
+                </h2>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">
-                  Live multi-hub inventory ledger (not a single central warehouse)
+                  Live availability per hub proving omnichannel multi-city retail — not single warehouse.
                 </p>
               </div>
-
-              <span className="text-xs font-mono px-2.5 py-1 rounded bg-slate-950 text-slate-300 border border-slate-800">
-                5 Metros • 6 Hubs
+              <span className="text-xs font-mono text-slate-500">
+                5 Metro Cities · 6 Physical Stores
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
-              <table className="w-full text-left font-mono text-xs border-collapse">
+            <div className="overflow-x-auto rounded-xl border border-slate-800 bg-ink-950">
+              <table className="w-full text-left border-collapse font-mono text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider bg-slate-900/60">
-                    <th className="py-2.5 px-4">Store Code</th>
-                    <th className="py-2.5 px-4">City</th>
-                    <th className="py-2.5 px-4">Location Name</th>
-                    <th className="py-2.5 px-4">Live Stock</th>
-                    <th className="py-2.5 px-4 text-right">Action</th>
+                  <tr className="border-b border-slate-800 bg-ink-900/80 text-[10px] text-slate-400 uppercase tracking-wider">
+                    <th className="py-3 px-4 font-black">Store Code</th>
+                    <th className="py-3 px-4 font-black">Location / Hub</th>
+                    <th className="py-3 px-4 font-black text-right">In-Stock Quantity</th>
+                    <th className="py-3 px-4 font-black text-center">Fulfillment Status</th>
+                    <th className="py-3 px-4 font-black text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {availability.map((storeRow) => {
-                    const isSelected = selectedStore?.id === storeRow.storeId;
-
+                  {availability.map((store) => {
+                    const isSelected = selectedStore?.id === store.storeId;
                     return (
                       <tr
-                        key={storeRow.storeId}
+                        key={store.storeId}
                         className={`transition-colors ${
-                          isSelected ? 'bg-indigo-950/40 border-l-2 border-indigo-500' : 'hover:bg-slate-900/50'
+                          isSelected ? 'bg-saffron/10 text-white' : 'hover:bg-ink-900/50 text-slate-300'
                         }`}
                       >
-                        <td className="py-3 px-4 font-black text-white">{storeRow.storeCode}</td>
-                        <td className="py-3 px-4 text-slate-300">{storeRow.city}</td>
-                        <td className="py-3 px-4 text-slate-400 font-sans">{storeRow.storeName}</td>
+                        <td className="py-3 px-4 font-bold text-white flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                          <span>{store.storeCode}</span>
+                        </td>
                         <td className="py-3 px-4">
-                          <StockBadge quantity={storeRow.stockQty} storeCode={storeRow.storeCode} />
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-200">{store.storeName}</span>
+                            <span className="text-[10px] text-slate-400">{store.city}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-right font-black text-sm">
+                          {store.stockQty}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <StockBadge quantity={store.stockQty} />
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedStore({
-                                id: storeRow.storeId,
-                                storeCode: storeRow.storeCode,
-                                storeName: storeRow.storeName,
-                                city: storeRow.city,
-                              });
-                            }}
-                            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
-                            }`}
-                          >
-                            {isSelected ? 'SELECTED' : 'SELECT'}
-                          </button>
+                          {isSelected ? (
+                            <span className="px-2.5 py-1 rounded bg-saffron/20 text-saffron font-bold text-[10px] uppercase border border-saffron/40">
+                              Active Store
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedStore({
+                                  id: store.storeId,
+                                  storeCode: store.storeCode,
+                                  storeName: store.storeName,
+                                  city: store.city,
+                                });
+                                showToast({
+                                  type: 'info',
+                                  message: `Switched store to ${store.storeCode} (${store.city})`,
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded bg-ink-900 hover:bg-ink-700 text-slate-300 hover:text-white text-[10px] font-bold transition-colors cursor-pointer border border-slate-700"
+                            >
+                              Select Store
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -312,65 +325,73 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Right Column (4 cols): ProofPanel */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        {/* Right Column (4 cols): Sticky Proof Panel */}
+        <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
           <ProofPanel
-            title="Catalog Invariant Evidence"
+            title="Inventory Ledger Proof"
             service="PostgreSQL"
-            action="GET /products/:id"
-            proof="Multi-Store Stock Ledger"
+            action={`GET /products/${id}`}
+            proof="Multi-hub row ledger"
           >
-            {/* Source info */}
-            <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Inventory Source:</span>
-                <span className="text-indigo-400 font-bold">PostgreSQL [inventory]</span>
+            {/* Inventory Source Info */}
+            <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 flex flex-col gap-2 font-mono text-xs">
+              <div className="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400">
+                <span>Database Source</span>
+                <span className="text-indigo-400">TABLE: store_inventory</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Total Across Stores:</span>
-                <span className="text-white font-extrabold">{product.totalStock ?? 0} Units</span>
-              </div>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                Inventory source: <strong>PostgreSQL</strong>. Stock is queried directly from transactional rows with city-level granularity.
+              </p>
             </div>
 
-            {/* Reconciliation Comparison with OpenSearch */}
-            {reconciliationRow && (
-              <div className="flex flex-col gap-2 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono">
+            {/* Reconciliation Cross-Service Row */}
+            {reconciliationRow ? (
+              <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 flex flex-col gap-2.5 font-mono text-xs">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">
-                    Reconciliation Sync Check
+                    Control Tower Reconciliation
                   </span>
                   <SyncBadge status={reconciliationRow.status} />
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">PG Total Stock:</span>
-                  <span className="text-white font-bold">{reconciliationRow.pgTotalStock}</span>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded bg-ink-900 border border-slate-800 flex flex-col">
+                    <span className="text-[10px] text-slate-400">PostgreSQL Total</span>
+                    <span className="text-base font-black text-indigo-300">
+                      {reconciliationRow.pgTotalStock} units
+                    </span>
+                  </div>
+                  <div className="p-2 rounded bg-ink-900 border border-slate-800 flex flex-col">
+                    <span className="text-[10px] text-slate-400">OpenSearch Total</span>
+                    <span className="text-base font-black text-emerald-300">
+                      {reconciliationRow.osTotalStock} units
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">OpenSearch Stock:</span>
-                  <span className="text-sky-300 font-bold">{reconciliationRow.osTotalStock}</span>
+
+                <div className="text-[10px] text-slate-400">
+                  Cities Synced: <strong>{reconciliationRow.osCities} / {reconciliationRow.pgCities}</strong>
                 </div>
-                <div className="flex justify-between items-center text-[11px]">
-                  <span className="text-slate-500">Indexed Cities:</span>
-                  <span className="text-slate-300 truncate max-w-[140px]">
-                    {reconciliationRow.osCities?.join(', ') || 'None'}
-                  </span>
-                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-ink-950 border border-slate-800 text-xs font-mono text-slate-400 text-center">
+                Fetching cross-service reconciliation diff...
               </div>
             )}
 
-            {/* Direct Link to Search Verification */}
+            {/* View in Search Link */}
             <Link
-              to={`/?q=${encodeURIComponent(product.name)}&city=${encodeURIComponent(selectedStore?.city || '')}`}
-              className="py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-mono text-xs font-bold transition-all flex items-center justify-between shadow-md"
+              to={`/?q=${encodeURIComponent(product.name.split(' ')[0] || product.name)}&city=${encodeURIComponent(selectedStore?.city || '')}`}
+              className="w-full py-2.5 px-4 rounded-xl bg-cyan/15 hover:bg-cyan/25 border border-cyan/40 text-cyan font-mono font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
-              <span>View in Search (OpenSearch)</span>
-              <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+              <Search className="w-3.5 h-3.5" />
+              <span>View in search (?q={product.name.split(' ')[0]}&city={selectedStore?.city})</span>
             </Link>
 
-            {/* Raw JSON Contract Viewer */}
+            {/* Raw JSON */}
             <JsonViewer
               data={product}
-              title="GET /products/:id Contract JSON"
+              title="Raw Product Availability JSON"
               defaultOpen={false}
               maxHeight="max-h-56"
             />
