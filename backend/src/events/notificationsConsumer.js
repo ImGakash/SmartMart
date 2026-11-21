@@ -3,6 +3,11 @@ const { markEventProcessed, insertNotification } = require('../db/repositories/c
 const { withTransaction } = require('../db/pool');
 const { chaos } = require('./chaos');
 const { emitStage } = require('./bus');
+const { Resend } = require('resend');
+
+// Initialize Resend only if API key is configured
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const notifMode = process.env.NOTIFICATION_MODE || 'simulated';
 
 let consumer = null;
 
@@ -14,7 +19,7 @@ async function startNotificationsConsumer(options = {}) {
   await consumer.connect();
   await consumer.subscribe({ topic: 'order-events', fromBeginning });
 
-  console.log(`[NotificationsConsumer] Subscribed to order-events (group: ${groupId}, fromBeginning: ${fromBeginning})`);
+  console.log(`[NotificationsConsumer] Subscribed to order-events (group: ${groupId}, fromBeginning: ${fromBeginning}, mode: ${notifMode})`);
 
   await consumer.run({
     autoCommit: false,
@@ -34,7 +39,7 @@ async function startNotificationsConsumer(options = {}) {
         return;
       }
 
-      const { eventId, orderId, orderNumber, items = [], totalPaise = 0 } = payload;
+      const { eventId, orderId, orderNumber, items = [], totalPaise = 0, customer } = payload;
 
       if (!eventId || !orderId) {
         console.warn(`[NotificationsConsumer] Skipping message without eventId or orderId at offset ${message.offset}`);
@@ -57,7 +62,7 @@ async function startNotificationsConsumer(options = {}) {
           }
           await insertNotification(tx, {
             orderId,
-            channel: 'SIMULATED_EMAIL',
+            channel: notifMode === 'real' ? 'EMAIL' : 'SIMULATED_EMAIL',
             message: notifMessage
           });
         });
@@ -67,14 +72,42 @@ async function startNotificationsConsumer(options = {}) {
             stage: 'NOTIFIED',
             detail: { eventId, orderNumber, totalPaise }
           });
+
+          // 4. Send real email AFTER transaction commits (fail-soft)
+          if (notifMode === 'real' && resend && customer?.email) {
+            try {
+              await resend.emails.send({
+                from: process.env.NOTIFICATION_FROM_EMAIL || 'SmartMart <onboarding@resend.dev>',
+                to: customer.email,
+                subject: `Order ${orderNumber} Confirmed 🎉`,
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h1 style="color: #2563eb;">Thank you for your order!</h1>
+                    <p><strong>Order #${orderNumber}</strong></p>
+                    <p>${items.length} item(s) — <strong>₹${formattedTotal}</strong></p>
+                    <p>We'll notify you when it ships.</p>
+                    <hr style="border: 1px solid #e5e7eb; margin: 20px 0;">
+                    <p style="color: #6b7280; font-size: 12px;">
+                      This email was sent automatically by SmartMart via Kafka event pipeline.
+                    </p>
+                  </div>
+                `
+              });
+              console.log(`[NotificationsConsumer] 📧 Real email sent to ${customer.email} for order ${orderNumber}`);
+            } catch (emailErr) {
+              console.warn(`[NotificationsConsumer] Email send failed (non-fatal):`, emailErr.message);
+            }
+          } else if (notifMode === 'real' && !customer?.email) {
+            console.warn(`[NotificationsConsumer] Real email mode enabled but no customer.email in payload. Skipping email.`);
+          }
         }
 
-        // 4. Commit offset strictly AFTER transaction commits
+        // 5. Commit offset strictly AFTER transaction commits
         await consumer.commitOffsets([{ topic, partition, offset: (BigInt(message.offset) + 1n).toString() }]);
 
       } catch (txErr) {
         console.error(`[NotificationsConsumer] Transaction failed for event ${eventId}:`, txErr.message);
-        throw txErr; // Do NOT commit offset so Kafka redelivers
+        throw txErr;
       }
     }
   });

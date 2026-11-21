@@ -8,12 +8,17 @@ const { randomUUID } = require('crypto');
 async function testNotificationConsumer() {
   console.log('=== STEP 5: NOTIFICATIONS CONSUMER DEDUP & TRANSACTION TEST ===\n');
 
-  let testOrderId;
+  // 1. Guaranteed Clean Slate: generate a fresh valid UUID for this test run
+  // Note: processed_events.event_id is typed as UUID in Postgres schema (CONTRACT §3).
+  // A fresh randomUUID guarantees zero collisions / zero ghost duplicates.
   const eventId = randomUUID();
+  console.log(`[0] Clean slate ensured. Fresh valid UUID eventId: ${eventId}`);
+
+  let testOrderId;
   const testGroupId = `notifications-test-${Date.now()}`;
 
   try {
-    // 1. Setup real order to satisfy FK constraint on notifications.order_id
+    // Setup real order to satisfy FK constraint on notifications.order_id
     console.log('[1] Setting up prerequisite order record...');
     const orderRes = await pool.query(`
       INSERT INTO orders (customer_id, store_id, source, total_paise, idempotency_key)
@@ -30,19 +35,19 @@ async function testNotificationConsumer() {
     const orderNumber = orderRes.rows[0].order_number;
     console.log(`    Order created: id=${testOrderId}, orderNumber=${orderNumber}`);
 
-    // 2. Connect producer and start consumer (with test-specific config to avoid old messages)
+    // Connect producer and start consumer
     console.log('\n[2] Connecting Producer and starting Notifications Consumer...');
     await producer.connect();
     await startNotificationsConsumer({ groupId: testGroupId, fromBeginning: false });
 
-    // 3. Track event bus stages
+    // Track event bus stages
     const stagesReceived = [];
     bus.on(`order:${testOrderId}`, (data) => {
       stagesReceived.push(data.stage);
       console.log(`    [bus.js] Stage dispatched for order: ${data.stage}`);
     });
 
-    // 4. Send initial OrderPlaced event
+    // 2. Resend Demo Address in envelope payload
     const envelope = {
       schemaVersion: 1,
       eventId,
@@ -51,7 +56,12 @@ async function testNotificationConsumer() {
       orderId: testOrderId,
       orderNumber,
       items: [{ productId: '10000000-0000-4000-8000-000000000001', quantity: 2, unitPricePaise: 129900 }],
-      totalPaise: 259800
+      totalPaise: 259800,
+      customer: {
+        id: '30000000-0000-4000-8000-000000000001',
+        name: 'Demo Customer',
+        email: 'delivered+smartmart-demo@resend.dev'
+      }
     };
 
     console.log(`\n[3] Publishing initial OrderPlaced event (eventId: ${eventId})...`);
@@ -79,7 +89,7 @@ async function testNotificationConsumer() {
     );
     console.log(`    processed_events entry verified: ${dedupCheck1.rows.length === 1 ? 'YES' : 'NO'}`);
 
-    // 5. Send duplicate message with same eventId
+    // Send duplicate message with same eventId
     console.log(`\n[4] Publishing duplicate OrderPlaced event (same eventId: ${eventId})...`);
     await producer.send({
       topic: 'order-events',
@@ -93,7 +103,7 @@ async function testNotificationConsumer() {
     const notifs2 = await getNotifications(testOrderId);
     console.log(`    Notifications count after duplicate delivery: ${notifs2.length}`);
 
-    // 6. Verifications
+    // Verifications
     const notifCreated = notifs1.length === 1;
     const dedupAbsorbed = notifs2.length === 1;
     const notifiedStageEmitted = stagesReceived.includes('NOTIFIED');
