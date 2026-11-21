@@ -8,6 +8,16 @@ export function AppProvider({ children }) {
   const [customers, setCustomers] = useState([]);
   const [selectedStore, setSelectedStoreState] = useState(null);
   const [selectedCustomer, setSelectedCustomerState] = useState(null);
+  
+  // Role: 'customer' | 'guest' | 'store' | 'admin' | null
+  const [role, setRoleState] = useState(() => {
+    try {
+      return localStorage.getItem('smartmart_role') || null;
+    } catch {
+      return null;
+    }
+  });
+
   const [cart, setCart] = useState(null);
   const [cartCount, setCartCount] = useState(0);
   const [healthStatus, setHealthStatus] = useState(null);
@@ -32,11 +42,37 @@ export function AppProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  // Set Role with persistence
+  const setRole = useCallback((newRole) => {
+    setRoleState(newRole);
+    try {
+      if (newRole) {
+        localStorage.setItem('smartmart_role', newRole);
+      } else {
+        localStorage.removeItem('smartmart_role');
+      }
+    } catch (e) {
+      console.warn('Failed to save role to localStorage', e);
+    }
+  }, []);
+
+  // Switch / Clear Role
+  const switchRole = useCallback(() => {
+    setRoleState(null);
+    try {
+      localStorage.removeItem('smartmart_role');
+    } catch (e) {
+      console.warn('Failed to clear role', e);
+    }
+  }, []);
+
   // Update selected store & persist
   const setSelectedStore = useCallback((store) => {
     setSelectedStoreState(store);
     if (store?.id) {
-      localStorage.setItem('smartmart_store_id', store.id);
+      try {
+        localStorage.setItem('smartmart_store_id', store.id);
+      } catch (e) {}
     }
   }, []);
 
@@ -45,11 +81,30 @@ export function AppProvider({ children }) {
     setSelectedCustomerState(customer);
     if (customer?.id) {
       setActiveCustomerId(customer.id);
-      localStorage.setItem('smartmart_customer_id', customer.id);
+      try {
+        localStorage.setItem('smartmart_customer_id', customer.id);
+      } catch (e) {}
     } else {
       setActiveCustomerId(null);
     }
   }, []);
+
+  // Guest entry helper: auto-selects c01 and BLR-01 with role 'guest'
+  const enterAsGuest = useCallback(() => {
+    const guestCustomer =
+      customers.find((c) => c.id === '30000000-0000-4000-8000-000000000001') ||
+      customers[0] ||
+      { id: '30000000-0000-4000-8000-000000000001', name: 'Asha Rao (Guest)', email: 'c01@demo.smartmart.in' };
+
+    const guestStore =
+      stores.find((s) => s.id === '20000000-0000-4000-8000-000000000001') ||
+      stores[0] ||
+      { id: '20000000-0000-4000-8000-000000000001', storeCode: 'BLR-01', storeName: 'SmartMart Indiranagar', city: 'Bengaluru' };
+
+    setSelectedCustomer(guestCustomer);
+    setSelectedStore(guestStore);
+    setRole('guest');
+  }, [customers, stores, setSelectedCustomer, setSelectedStore, setRole]);
 
   // Fetch active cart
   const refreshCart = useCallback(async () => {
@@ -67,7 +122,6 @@ export function AppProvider({ children }) {
       setCartCount(totalQty);
       return data;
     } catch (err) {
-      // Don't show toast on routine background empty cart fetch
       console.warn('Failed to refresh cart:', err.message);
       return null;
     }
@@ -90,7 +144,10 @@ export function AppProvider({ children }) {
         setCustomers(customersData || []);
 
         // Restore or default store
-        const savedStoreId = localStorage.getItem('smartmart_store_id');
+        let savedStoreId = null;
+        try {
+          savedStoreId = localStorage.getItem('smartmart_store_id');
+        } catch {}
         const initialStore =
           storesData?.find((s) => s.id === savedStoreId) ||
           storesData?.[0] ||
@@ -98,7 +155,10 @@ export function AppProvider({ children }) {
         setSelectedStoreState(initialStore);
 
         // Restore or default customer
-        const savedCustomerId = localStorage.getItem('smartmart_customer_id');
+        let savedCustomerId = null;
+        try {
+          savedCustomerId = localStorage.getItem('smartmart_customer_id');
+        } catch {}
         const initialCustomer =
           customersData?.find((c) => c.id === savedCustomerId) ||
           customersData?.[0] ||
@@ -157,6 +217,10 @@ export function AppProvider({ children }) {
   }, [selectedCustomer?.id, selectedStore?.id, refreshCart]);
 
   const value = {
+    role,
+    setRole,
+    switchRole,
+    enterAsGuest,
     stores,
     customers,
     selectedStore,
