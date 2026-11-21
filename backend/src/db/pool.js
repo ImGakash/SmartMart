@@ -1,5 +1,9 @@
+const fs = require('fs');
+const path = require('path');
 const pg = require('pg');
-require('dotenv').config({ path: __dirname + '/../../.env' });
+
+// Ensure .env is loaded
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 // BIGINT parsing: pg.types.setTypeParser(20, Number)
 pg.types.setTypeParser(20, (val) => (val === null ? null : Number(val)));
@@ -13,14 +17,46 @@ class DbError extends Error {
   }
 }
 
-const connectionString = (process.env.DATABASE_URL || 'postgres://avnadmin:AVNS_rmybKIjP2M12yuKPjGd@pg-1e06436c-smartmart-2026.h.aivencloud.com:21035/defaultdb').replace(/[?&]sslmode=[^&]+/, '');
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required');
+}
+
+const connectionString = process.env.DATABASE_URL.replace(/[?&]sslmode=[^&]+/, '');
+
+// Resolve CA cert path
+let ca;
+const caEnvPath = process.env.PG_CA_CERT_PATH;
+if (caEnvPath) {
+  const possiblePaths = [
+    caEnvPath,
+    path.resolve(process.cwd(), caEnvPath),
+    path.resolve(__dirname, '../../', caEnvPath),
+    path.resolve(__dirname, '../', caEnvPath)
+  ];
+  const foundPath = possiblePaths.find((p) => fs.existsSync(p));
+  if (!foundPath) {
+    throw new Error(`PG_CA_CERT_PATH specified (${caEnvPath}) but file not found`);
+  }
+  ca = fs.readFileSync(foundPath);
+} else {
+  const fallbackCa = [
+    path.resolve(__dirname, '../../ca.pem'),
+    path.resolve(__dirname, '../ca.pem')
+  ].find((p) => fs.existsSync(p));
+  if (fallbackCa) {
+    ca = fs.readFileSync(fallbackCa);
+  }
+}
+
+const ssl = {
+  ca,
+  rejectUnauthorized: true
+};
 
 const pool = new pg.Pool({
   connectionString,
   max: parseInt(process.env.PG_POOL_MAX || '8', 10),
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl
 });
 
 async function withTransaction(fn) {
