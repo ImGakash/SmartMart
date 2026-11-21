@@ -41,8 +41,10 @@ async function startNotificationsConsumer(options = {}) {
 
       const { eventId, orderId, orderNumber, items = [], totalPaise = 0, customer } = payload;
 
-      if (!eventId || !orderId) {
-        console.warn(`[NotificationsConsumer] Skipping message without eventId or orderId at offset ${message.offset}`);
+      // Validate UUID format for eventId and orderId to prevent poison pills from aborting SQL transactions
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!eventId || !orderId || !uuidRegex.test(eventId) || !uuidRegex.test(orderId)) {
+        console.warn(`[NotificationsConsumer] Poison pill / non-UUID eventId (${eventId}) or orderId (${orderId}) at offset ${message.offset}. Skipping and committing offset.`);
         await consumer.commitOffsets([{ topic, partition, offset: (BigInt(message.offset) + 1n).toString() }]);
         return;
       }
@@ -54,6 +56,13 @@ async function startNotificationsConsumer(options = {}) {
       let wasFirstTime = false;
       try {
         await withTransaction(async (tx) => {
+          // Check if order exists in DB to prevent foreign key constraint violations from deleted test orders
+          const orderExists = await tx.query('SELECT id FROM orders WHERE id = $1', [orderId]);
+          if (orderExists.rows.length === 0) {
+            console.warn(`[NotificationsConsumer] Order ${orderId} does not exist in DB (likely cleaned up test order). Skipping notification.`);
+            return;
+          }
+
           wasFirstTime = await markEventProcessed(tx, eventId, 'notifications');
           if (!wasFirstTime) {
             console.log(`[NotificationsConsumer] Duplicate event ${eventId} absorbed by processed_events`);
