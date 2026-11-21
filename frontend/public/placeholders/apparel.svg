@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#F7F8FA" rx="8" />
+  <!-- Apparel / T-Shirt line art -->
+  <g stroke="#878787" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M75 52 Q100 65 125 52 L150 68 L138 90 L124 82 L124 130 L76 130 L76 82 L62 90 L50 68 Z" />
+    <path d="M85 52 Q100 62 115 52" />
+  </g>
+  <text x="100" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#878787" text-anchor="middle" letter-spacing="0.5">Apparel</text>
+</svg>

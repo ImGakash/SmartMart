@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#F7F8FA" rx="8" />
+  <!-- Appliances / Kettle-Vacuum line art -->
+  <g stroke="#878787" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="65" y="55" width="70" height="65" rx="8" />
+    <line x1="65" y1="95" x2="135" y2="95" />
+    <circle cx="100" cy="75" r="8" />
+    <line x1="80" y1="120" x2="80" y2="128" />
+    <line x1="120" y1="120" x2="120" y2="128" />
+    <path d="M100 45 L100 55" />
+    <circle cx="100" cy="42" r="3" fill="#878787" />
+  </g>
+  <text x="100" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#878787" text-anchor="middle" letter-spacing="0.5">Appliances</text>
+</svg>

@@ -1,29 +1,7 @@
 const { pool, withTransaction, DbError } = require('../pool');
 const { insertOutboxEvent } = require('./outboxRepo');
-
-async function deductInventory(tx, storeId, productId, quantity) {
-  const sql = `
-    UPDATE inventory
-    SET stock_qty = stock_qty - $3, updated_at = now()
-    WHERE store_id = $1 AND product_id = $2 AND stock_qty >= $3
-    RETURNING stock_qty AS "stockQty";
-  `;
-  const res = await tx.query(sql, [storeId, productId, quantity]);
-  if (res.rows.length === 0) {
-    const availRes = await tx.query(
-      'SELECT stock_qty AS "stockQty" FROM inventory WHERE store_id = $1 AND product_id = $2',
-      [storeId, productId]
-    );
-    const available = availRes.rows.length > 0 ? Number(availRes.rows[0].stockQty) : 0;
-    throw new DbError('INSUFFICIENT_STOCK', {
-      productId,
-      storeId,
-      available,
-      requested: quantity
-    });
-  }
-  return { stockQty: Number(res.rows[0].stockQty) };
-}
+const { deductInventory } = require('./productRepo');
+const { closeCart } = require('./cartRepo');
 
 async function placeOrderAtomic({ customerId, storeId, items, idempotencyKey, cartId = null }) {
   if (!items || items.length === 0) {
@@ -131,6 +109,11 @@ async function placeOrderAtomic({ customerId, storeId, items, idempotencyKey, ca
         unitPricePaise,
         subtotalPaise
       });
+    }
+
+    // Step 9: If cartId: closeCart(tx, cartId)
+    if (cartId) {
+      await closeCart(tx, cartId);
     }
 
     // Outbox: 1 x OrderPlaced + 1 x StoreStockChanged per item
@@ -297,8 +280,120 @@ async function recordPosSale({ storeId, items, idempotencyKey }) {
   });
 }
 
+async function getOrderById(orderId) {
+  const orderRes = await pool.query(
+    `SELECT o.id, o.order_number AS "orderNumber", o.customer_id AS "customerId", o.store_id AS "storeId",
+            o.source, o.status, o.total_paise AS "totalPaise", o.idempotency_key AS "idempotencyKey", o.created_at AS "createdAt",
+            c.name AS "customerName", c.email AS "customerEmail",
+            s.store_code AS "storeCode", s.city AS "storeCity"
+     FROM orders o
+     LEFT JOIN customers c ON c.id = o.customer_id
+     JOIN stores s ON s.id = o.store_id
+     WHERE o.id = $1`,
+    [orderId]
+  );
+  if (orderRes.rows.length === 0) {
+    throw new DbError('ORDER_NOT_FOUND', { id: orderId });
+  }
+  const row = orderRes.rows[0];
+  const itemsRes = await pool.query(
+    `SELECT product_id AS "productId", store_id AS "storeId", quantity, unit_price_paise AS "unitPricePaise", subtotal_paise AS "subtotalPaise"
+     FROM order_items WHERE order_id = $1`,
+    [orderId]
+  );
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    customerId: row.customerId,
+    storeId: row.storeId,
+    source: row.source,
+    status: row.status,
+    totalPaise: Number(row.totalPaise),
+    idempotencyKey: row.idempotencyKey,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    customer: row.customerId ? { id: row.customerId, name: row.customerName, email: row.customerEmail } : null,
+    store: { storeCode: row.storeCode, city: row.storeCity },
+    items: itemsRes.rows.map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      unitPricePaise: Number(i.unitPricePaise),
+      subtotalPaise: Number(i.subtotalPaise)
+    }))
+  };
+}
+
+async function getOrderByIdempotencyKey(key) {
+  const orderRes = await pool.query(
+    `SELECT o.id, o.order_number AS "orderNumber", o.customer_id AS "customerId", o.store_id AS "storeId",
+            o.source, o.status, o.total_paise AS "totalPaise", o.idempotency_key AS "idempotencyKey", o.created_at AS "createdAt",
+            c.name AS "customerName", c.email AS "customerEmail",
+            s.store_code AS "storeCode", s.city AS "storeCity"
+     FROM orders o
+     LEFT JOIN customers c ON c.id = o.customer_id
+     JOIN stores s ON s.id = o.store_id
+     WHERE o.idempotency_key = $1`,
+    [key]
+  );
+  if (orderRes.rows.length === 0) {
+    return null;
+  }
+  const row = orderRes.rows[0];
+  const itemsRes = await pool.query(
+    `SELECT product_id AS "productId", store_id AS "storeId", quantity, unit_price_paise AS "unitPricePaise", subtotal_paise AS "subtotalPaise"
+     FROM order_items WHERE order_id = $1`,
+    [row.id]
+  );
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    customerId: row.customerId,
+    storeId: row.storeId,
+    source: row.source,
+    status: row.status,
+    totalPaise: Number(row.totalPaise),
+    idempotencyKey: row.idempotencyKey,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
+    customer: row.customerId ? { id: row.customerId, name: row.customerName, email: row.customerEmail } : null,
+    store: { storeCode: row.storeCode, city: row.storeCity },
+    items: itemsRes.rows.map((i) => ({
+      ...i,
+      quantity: Number(i.quantity),
+      unitPricePaise: Number(i.unitPricePaise),
+      subtotalPaise: Number(i.subtotalPaise)
+    }))
+  };
+}
+
+async function getRecentOrders(limit = 10) {
+  const sql = `
+    SELECT o.id, o.order_number AS "orderNumber", o.source, o.status, o.total_paise AS "totalPaise",
+           s.city AS "storeCity",
+           COALESCE(SUM(oi.quantity), 0)::integer AS "itemCount",
+           o.created_at AS "createdAt"
+    FROM orders o
+    JOIN stores s ON s.id = o.store_id
+    LEFT JOIN order_items oi ON oi.order_id = o.id
+    GROUP BY o.id, o.order_number, o.source, o.status, o.total_paise, s.city, o.created_at
+    ORDER BY o.created_at DESC
+    LIMIT $1;
+  `;
+  const res = await pool.query(sql, [limit]);
+  return res.rows.map((r) => ({
+    id: r.id,
+    orderNumber: r.orderNumber,
+    source: r.source,
+    status: r.status,
+    totalPaise: Number(r.totalPaise),
+    storeCity: r.storeCity,
+    itemCount: Number(r.itemCount),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt
+  }));
+}
+
 module.exports = {
-  deductInventory,
   placeOrderAtomic,
-  recordPosSale
+  recordPosSale,
+  getOrderById,
+  getOrderByIdempotencyKey,
+  getRecentOrders
 };

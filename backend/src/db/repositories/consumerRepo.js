@@ -1,4 +1,4 @@
-const { pool, withTransaction } = require('../pool');
+const { pool } = require('../pool');
 
 async function markEventProcessed(tx, eventId, consumerGroup) {
   const client = tx || pool;
@@ -49,8 +49,26 @@ async function getNotifications(orderId) {
   }));
 }
 
+async function getRecentNotifications(limit = 10) {
+  const sql = `
+    SELECT id, order_id AS "orderId", channel, message, created_at AS "createdAt"
+    FROM notifications
+    ORDER BY id DESC
+    LIMIT $1;
+  `;
+  const res = await pool.query(sql, [limit]);
+  return res.rows.map((r) => ({
+    id: Number(r.id),
+    orderId: r.orderId,
+    channel: r.channel,
+    message: r.message,
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt
+  }));
+}
+
 module.exports = {
   markEventProcessed,
   insertNotification,
-  getNotifications
+  getNotifications,
+  getRecentNotifications
 };

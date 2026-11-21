@@ -1,2 +1,2 @@
-const outboxRepo = require('../repositories/outboxRepo');
+const outboxRepo = require('./repositories/outboxRepo');
 module.exports = outboxRepo;

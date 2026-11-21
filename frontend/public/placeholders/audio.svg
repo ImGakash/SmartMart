@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <rect width="200" height="200" fill="#F7F8FA" rx="8" />
+  <!-- Audio / Headphones line art -->
+  <g stroke="#878787" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M55 95 A45 45 0 0 1 145 95" />
+    <rect x="45" y="90" width="18" height="32" rx="6" />
+    <rect x="137" y="90" width="18" height="32" rx="6" />
+    <path d="M54 90 L54 85 A46 46 0 0 1 146 85 L146 90" stroke-width="1.5" />
+    <circle cx="100" cy="95" r="4" fill="#878787" />
+  </g>
+  <text x="100" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" fill="#878787" text-anchor="middle" letter-spacing="0.5">Audio</text>
+</svg>
