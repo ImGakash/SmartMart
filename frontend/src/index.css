@@ -23,7 +23,21 @@
   --text: #EEF2FF;
   --muted: #94A3B8;
   --faint: #64748B;
-  color-scheme: dark;
+
+  /* SmartMart Light Theme Tokens */
+  --page-bg: #F1F3F6;
+  --surface-card: #FFFFFF;
+  --border-light: #E0E0E0;
+  --text-main: #212121;
+  --text-secondary: #878787;
+  --primary-blue: #2874F0;
+  --saffron-action: #FF9F00;
+  --amber-pos: #F59E0B;
+  --indigo-admin: #4F46E5;
+  --pass-green: #388E3C;
+  --error-red: #D32F2F;
+
+  color-scheme: light;
 }
 
 body {
