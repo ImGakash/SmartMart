@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../../db');
 const { getChaosState, setChaosSwitch } = require('../../events/chaos');
+const { bulkIndexAll } = require('../../search/productIndex');
 
 // GET /admin/chaos
 router.get('/admin/chaos', (req, res) => {
@@ -31,8 +32,8 @@ router.post('/admin/outbox/requeue', async (req, res, next) => {
 // POST /admin/reindex
 router.post('/admin/reindex', async (req, res, next) => {
   try {
-    const docs = await db.getAllProductSearchDocs();
-    res.json({ indexed: docs.length });
+    const result = await bulkIndexAll();
+    res.json(result);
   } catch (err) {
     next(err);
   }

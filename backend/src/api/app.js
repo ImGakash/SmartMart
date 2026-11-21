@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const db = require('../db');
 const { kafkaHealthy } = require('../events/kafka');
+const { osHealthy } = require('../search/client');
 
 const catalogRouter = require('./routes/catalog');
 const cartRouter = require('./routes/cart');
@@ -34,10 +35,18 @@ app.get('/health', async (req, res) => {
     kafkaStatus = 'down';
   }
 
+  let opensearchStatus = 'down';
+  try {
+    const isOsUp = await osHealthy();
+    opensearchStatus = isOsUp ? 'up' : 'down';
+  } catch (err) {
+    opensearchStatus = 'down';
+  }
+
   res.json({
     pg: pgStatus,
     kafka: kafkaStatus,
-    opensearch: 'down'
+    opensearch: opensearchStatus
   });
 });
 

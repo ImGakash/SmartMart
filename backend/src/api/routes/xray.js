@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../../db');
 const bus = require('../../events/bus');
 const { getChaosState } = require('../../events/chaos');
+const { getReconciliation } = require('../../search/productIndex');
 
 async function buildMetricsBundle() {
   const [
@@ -13,7 +14,8 @@ async function buildMetricsBundle() {
     recentNotifications,
     outbox,
     consistency,
-    allDocs
+    allDocs,
+    reconciliation
   ] = await Promise.all([
     db.getDashboardMetrics(),
     db.getInventoryByCity(),
@@ -22,25 +24,11 @@ async function buildMetricsBundle() {
     db.getRecentNotifications(10),
     db.getOutboxMetrics(),
     db.getConsistencyReport(),
-    db.getAllProductSearchDocs()
+    db.getAllProductSearchDocs(),
+    getReconciliation()
   ]);
 
   const chaos = getChaosState();
-
-  // v1.2 Reconciliation: honestly reported as MISSING while OpenSearch pipeline is not yet running
-  const reconciliation = {
-    checkedAt: new Date().toISOString(),
-    mismatches: allDocs.length,
-    rows: allDocs.map((doc) => ({
-      productId: doc.productId,
-      name: doc.name,
-      pgTotalStock: doc.totalStock,
-      osTotalStock: 0,
-      pgCities: doc.cities,
-      osCities: [],
-      status: 'MISSING'
-    }))
-  };
 
   return {
     dashboard,

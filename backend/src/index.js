@@ -3,6 +3,7 @@ const config = require('./config');
 const db = require('./db');
 const { connectProducer, disconnectAll } = require('./events/kafka');
 const outboxRelay = require('./events/outboxRelay');
+const { ensureIndex, bulkIndexAll } = require('./search/productIndex');
 
 let server = null;
 
@@ -18,17 +19,26 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  // 2. Connect Kafka producer
+  // 2. Initialize OpenSearch index & perform initial bulk sync (36 docs) per CONTRACT.md §9
+  try {
+    await ensureIndex();
+    const indexResult = await bulkIndexAll();
+    console.log(`OpenSearch initial bulk index complete: ${indexResult.indexed} products indexed`);
+  } catch (err) {
+    console.warn('Warning: OpenSearch index bootstrap failed or deferred:', err.message);
+  }
+
+  // 3. Connect Kafka producer
   try {
     await connectProducer();
   } catch (err) {
     console.warn('Warning: Kafka producer connection failed at bootstrap:', err.message);
   }
 
-  // 3. Start Outbox Relay worker loop
+  // 4. Start Outbox Relay worker loop
   outboxRelay.start();
 
-  // 4. Start HTTP server
+  // 5. Start HTTP server
   server = app.listen(config.port, () => {
     console.log(`SmartMart backend listening on http://localhost:${config.port}`);
     console.log(`- Health check: http://localhost:${config.port}/health`);
