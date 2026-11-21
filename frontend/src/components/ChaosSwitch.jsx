@@ -3,8 +3,8 @@ import { AlertTriangle, Power } from 'lucide-react';
 
 /**
  * ChaosSwitch component
- * Labeled toggle for admin chaos targets.
- * Active faults glow red.
+ * Labeled toggle for admin chaos targets in clean SaaS style.
+ * Active faults highlighted with soft red state.
  * Target names: relay, relay-after-publish, notifications, search-indexer.
  */
 export default function ChaosSwitch({
@@ -17,25 +17,25 @@ export default function ChaosSwitch({
 }) {
   return (
     <div
-      className={`p-4 rounded-xl border transition-all duration-300 flex flex-col justify-between gap-3 ${
+      className={`p-3.5 rounded-lg border transition-all flex flex-col justify-between gap-3 ${
         enabled
-          ? 'bg-rose-950/70 border-rose-500 text-rose-100 shadow-lg shadow-rose-950/60 ring-1 ring-rose-500'
-          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+          ? 'bg-rose-50 border-rose-200 text-rose-950 shadow-2xs'
+          : 'bg-white border-[#E5E7EB] text-slate-800 hover:border-slate-300 shadow-2xs'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-black uppercase tracking-wider">
+            <span className="font-mono text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               {target}
             </span>
             {enabled && (
-              <span className="px-1.5 py-0.5 rounded bg-rose-500 text-white font-mono text-[9px] font-extrabold uppercase animate-pulse">
+              <span className="px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 font-mono text-[10px] font-bold uppercase">
                 FAULT ACTIVE
               </span>
             )}
           </div>
-          <h4 className="text-sm font-bold text-white">
+          <h4 className="text-sm font-semibold text-slate-900">
             {label}
           </h4>
         </div>
@@ -45,20 +45,20 @@ export default function ChaosSwitch({
           type="button"
           onClick={() => onToggle && onToggle(target, !enabled)}
           disabled={disabled}
-          className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none p-0.5 ${
-            enabled ? 'bg-rose-600' : 'bg-slate-800'
+          className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none p-0.5 cursor-pointer shrink-0 ${
+            enabled ? 'bg-rose-600' : 'bg-slate-300 hover:bg-slate-400'
           }`}
           title={`Toggle ${target}`}
         >
           <div
-            className={`w-5 h-5 rounded-full bg-white transition-transform duration-200 shadow-md ${
-              enabled ? 'translate-x-6' : 'translate-x-0'
+            className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
+              enabled ? 'translate-x-5' : 'translate-x-0'
             }`}
           />
         </button>
       </div>
 
-      <p className="text-xs text-slate-400 leading-relaxed font-sans">
+      <p className="text-xs text-slate-500 leading-relaxed">
         {description}
       </p>
     </div>

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../api/client.js';
 import { useApp } from '../state/AppContext.jsx';
-import DemoActionButton from '../components/DemoActionButton.jsx';
 import ProofBadge from '../components/ProofBadge.jsx';
 import MetricCard from '../components/MetricCard.jsx';
 import {
@@ -159,349 +158,324 @@ export default function DemoRunbook() {
   const completedChecksCount = Object.values(checkedItems).filter(Boolean).length;
 
   return (
-    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8 font-sans">
-      {/* Runbook Header */}
-      <div className="bg-gradient-to-r from-ink-950 via-sky-950/40 to-ink-950 border border-slate-800 rounded-3xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1.5 uppercase tracking-wider">
-              <BookOpen className="w-3.5 h-3.5 text-sky-400" />
-              PRESENTER RUNBOOK
+    <div className="flex flex-col gap-6 font-sans">
+      {/* Header Banner */}
+      <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-2xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center gap-1.5 uppercase tracking-wider">
+              <BookOpen className="w-3.5 h-3.5" />
+              Presenter Runbook
             </span>
-            <span className="text-slate-400 text-xs font-mono">Team-Facing Live Demo Sequence</span>
+            <span className="text-xs text-[#6B7280]">Live Demonstration Sequence</span>
           </div>
 
-          <h1 className="text-3xl lg:text-4xl font-mono font-black tracking-tight text-white uppercase">
-            SMARTMART DEMO RUNBOOK
+          <h1 className="text-xl font-semibold text-[#111827] mt-1">
+            SmartMart Demonstration Script
           </h1>
 
-          <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
-            Follow this 8-step script during presentation to systematically demonstrate each distributed systems property to judges.
+          <p className="text-xs text-[#6B7280] max-w-2xl mt-0.5 leading-relaxed">
+            Follow this 8-step script during your presentation to systematically verify every distributed systems invariant.
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 bg-ink-950 border border-slate-800 rounded-2xl p-4 min-w-[220px] shadow-inner">
-          <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
-            Demo Readiness
-          </span>
-          <div className="text-2xl font-mono font-black text-white">
-            <span className={completedChecksCount === DEFAULT_CHECKLIST.length ? 'text-emerald-400' : 'text-sky-400'}>
-              {completedChecksCount} / {DEFAULT_CHECKLIST.length}
+        {/* Readiness Count */}
+        <div className="flex items-center gap-3 bg-[#F8FAFC] border border-[#E5E7EB] rounded-lg p-3">
+          <span className="text-xs text-slate-500 font-medium">Verified:</span>
+          <span className="font-mono text-base font-bold text-slate-900">
+            <span className={completedChecksCount === DEFAULT_CHECKLIST.length ? 'text-[#047857]' : 'text-indigo-600'}>
+              {completedChecksCount}
             </span>
-            <span className="text-xs text-slate-500 font-sans font-normal ml-2">Verified</span>
-          </div>
+            <span className="text-slate-400"> / {DEFAULT_CHECKLIST.length}</span>
+          </span>
         </div>
       </div>
 
       {/* PRE-FLIGHT STATUS STRIP */}
-      <div className="bg-ink-800/70 border border-line rounded-3xl p-5 shadow-xl backdrop-blur-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-ink-950 text-slate-300 border border-slate-800">
-            <Activity className="w-5 h-5 text-cyan" />
-          </div>
+      <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 shadow-2xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <Activity className="w-4 h-4 text-indigo-600" />
           <div>
-            <span className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider block">
-              Pre-Flight System Status
+            <span className="text-xs font-semibold text-slate-900 block">
+              Pre-Flight System Check
             </span>
-            <span className="text-[11px] text-slate-400 font-mono">
-              Live checks against /health, /xray/metrics, and P01 inventory
+            <span className="text-[11px] text-slate-500">
+              Live validation against /health, /xray/metrics, and P01 stock
             </span>
           </div>
         </div>
 
-        {/* Status Indicators */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-          {/* Services */}
-          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span className="text-slate-400 font-bold">SERVICES:</span>
-            <ProofBadge
-              status={healthStatus?.pg === 'up' ? 'pass' : 'fail'}
-              label={`PG: ${healthStatus?.pg?.toUpperCase() || 'UP'}`}
-            />
-            <ProofBadge
-              status={healthStatus?.kafka === 'up' ? 'pass' : 'fail'}
-              label={`KAFKA: ${healthStatus?.kafka?.toUpperCase() || 'UP'}`}
-            />
-            <ProofBadge
-              status={healthStatus?.opensearch === 'up' ? 'pass' : 'fail'}
-              label={`SEARCH: ${healthStatus?.opensearch?.toUpperCase() || 'UP'}`}
-            />
-          </div>
-
-          {/* Consistency */}
-          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span className="text-slate-400 font-bold">CONSISTENCY:</span>
-            <ProofBadge
-              status={consistencyPassing === totalConsistency ? 'pass' : 'warn'}
-              label={`${consistencyPassing}/${totalConsistency} PASS`}
-            />
-          </div>
-
-          {/* P01 Seed Stock */}
-          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
-            <span className="text-slate-400 font-bold">P01 STOCK:</span>
-            <ProofBadge
-              status={p01Stock === 1 ? 'pass' : 'warn'}
-              label={`BLR-01: ${p01Stock ?? '...'} UNIT${p01Stock === 1 ? '' : 'S'}`}
-            />
-          </div>
+        {/* Status Indicators as Soft Pills */}
+        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
+          <ProofBadge
+            status={healthStatus?.pg === 'up' ? 'pass' : 'fail'}
+            label={`PG: ${healthStatus?.pg?.toUpperCase() || 'UP'}`}
+          />
+          <ProofBadge
+            status={healthStatus?.kafka === 'up' ? 'pass' : 'fail'}
+            label={`KAFKA: ${healthStatus?.kafka?.toUpperCase() || 'UP'}`}
+          />
+          <ProofBadge
+            status={healthStatus?.opensearch === 'up' ? 'pass' : 'fail'}
+            label={`SEARCH: ${healthStatus?.opensearch?.toUpperCase() || 'UP'}`}
+          />
+          <ProofBadge
+            status={consistencyPassing === totalConsistency ? 'pass' : 'warn'}
+            label={`CONSISTENCY: ${consistencyPassing}/${totalConsistency}`}
+          />
+          <ProofBadge
+            status={p01Stock === 1 ? 'pass' : 'warn'}
+            label={`P01 STOCK: ${p01Stock ?? '...'} UNIT`}
+          />
         </div>
       </div>
 
       {/* Main Grid: 8-Step Runbook Sequence (Left) vs Persistent Checklist (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT: 8-STEP SEQUENCE */}
-        <div className="lg:col-span-8 flex flex-col gap-4">
-          <div className="flex items-center justify-between pb-2">
-            <h2 className="text-lg font-mono font-bold text-white uppercase tracking-wider">
-              Presentation Script (8 Steps)
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* LEFT: 8-STEP SEQUENCE (8 cols) */}
+        <div className="lg:col-span-8 flex flex-col gap-3">
+          <div className="flex items-center justify-between pb-1">
+            <h2 className="text-base font-semibold text-[#111827]">
+              Demonstration Steps (1 through 8)
             </h2>
-            <span className="text-xs font-mono text-slate-500">Execute in sequence</span>
+            <span className="text-xs text-[#6B7280]">Execute in order</span>
           </div>
 
           {/* Step 1 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 1
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Reset Demo Database</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Reset Demo State</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   POST /demo/reset · Restores seed inventory (P01 stock = 1), clears test orders, resets outbox events.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Clean slate guarantees reproducible demonstration without legacy state pollution.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={handleResetDemo}
-              loading={isResetting}
-              variant="secondary"
-              icon={RotateCcw}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              disabled={isResetting}
+              className="h-[36px] px-3.5 rounded-lg bg-white border border-[#E5E7EB] hover:bg-slate-50 text-slate-800 font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
             >
-              1. Reset Demo
-            </DemoActionButton>
+              <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+              <span>1. Reset Demo</span>
+            </button>
           </div>
 
           {/* Step 2 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 2
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Open Search "bluetoth"</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Search Typo Tolerance</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Navigate /?q=bluetoth&city=Bengaluru · Demonstrates fuzzy typo tolerance served by OpenSearch.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: OpenSearch fuzzy match highlight vs PostgreSQL 503 fallback banner.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/?q=bluetoth&city=Bengaluru')}
-              variant="primary"
-              icon={Search}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              className="h-[36px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs shadow-indigo-100 transition-colors shrink-0 cursor-pointer"
             >
-              2. Open Search
-            </DemoActionButton>
+              <Search className="w-3.5 h-3.5" />
+              <span>2. Open Search</span>
+            </button>
           </div>
 
           {/* Step 3 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 3
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Open Cart &amp; Add Items</span>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Navigate /cart · Shows selected items with live calculated paise-to-rupee totals and advisory stock.
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Cart & Advisory Stock</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Navigate /cart · Shows selected items with live calculated paise totals and advisory stock.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Stock is advisory — client never blocks checkout; let server enforce invariants.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/cart')}
-              variant="secondary"
-              icon={ShoppingCart}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              className="h-[36px] px-3.5 rounded-lg bg-white border border-[#E5E7EB] hover:bg-slate-50 text-slate-800 font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
             >
-              3. Open Cart
-            </DemoActionButton>
+              <ShoppingCart className="w-3.5 h-3.5" />
+              <span>3. Open Cart</span>
+            </button>
           </div>
 
           {/* Step 4 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 4
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Online Checkout (Idempotent)</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Online Idempotent Checkout</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Navigate /cart · Place order with unique client Idempotency-Key and observe live SSE stages.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Success modal + copyable Idempotency-Key; replayed request returns replayed: true.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/cart')}
-              variant="primary"
-              icon={CreditCard}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              className="h-[36px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs shadow-indigo-100 transition-colors shrink-0 cursor-pointer"
             >
-              4. Checkout
-            </DemoActionButton>
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>4. Checkout</span>
+            </button>
           </div>
 
           {/* Step 5 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 5
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Physical POS Store Sale</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Physical POS Store Sale</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Navigate /pos · Execute cashier sale with side-by-side BEFORE/AFTER inventory proof.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: POS_STORE sale triggers outbox event that refreshes OpenSearch index in real time.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/pos')}
-              variant="warning"
-              icon={Terminal}
-              size="md"
-              className="shrink-0 font-mono font-bold text-black bg-amber-500 hover:bg-amber-400"
+              className="h-[36px] px-3.5 rounded-lg bg-white border border-[#E5E7EB] hover:bg-slate-50 text-slate-800 font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
             >
-              5. POS Sale
-            </DemoActionButton>
+              <Terminal className="w-3.5 h-3.5" />
+              <span>5. POS Sale</span>
+            </button>
           </div>
 
           {/* Step 6 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-rose-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 6
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Run Concurrency Race</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Run Concurrency Race</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Navigate /race · 50 parallel buyers competing for 1 unit of stock under Safe vs Naive mode.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Exactly 1 201 winner, 49 409 rejections, final stock = 0 (zero oversell).
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/race')}
-              variant="danger"
-              icon={Zap}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              className="h-[36px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs shadow-indigo-100 transition-colors shrink-0 cursor-pointer"
             >
-              6. Run Race
-            </DemoActionButton>
+              <Zap className="w-3.5 h-3.5" />
+              <span>6. Run Race</span>
+            </button>
           </div>
 
           {/* Step 7 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-emerald-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 7
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Inventory Control Tower</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Inventory Control Tower</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   Navigate /xray · Inspect 36/36 cross-service reconciliation and 10/10 consistency table.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Mathematical invariants hold across PostgreSQL, Kafka, and OpenSearch.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={() => navigate('/xray')}
-              variant="success"
-              icon={Activity}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              className="h-[36px] px-3.5 rounded-lg bg-white border border-[#E5E7EB] hover:bg-slate-50 text-slate-800 font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-colors shrink-0 cursor-pointer"
             >
-              7. Control Tower
-            </DemoActionButton>
+              <Activity className="w-3.5 h-3.5" />
+              <span>7. Control Tower</span>
+            </button>
           </div>
 
           {/* Step 8 */}
-          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
-            <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-ink-950 text-indigo-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
+            <div className="flex items-start gap-3">
+              <span className="w-7 h-7 rounded-full bg-slate-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
                 8
               </span>
-              <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Full OpenSearch Reindex</span>
-                <p className="text-xs text-slate-400 mt-0.5">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Full OpenSearch Reindex</span>
+                <p className="text-xs text-[#6B7280] mt-0.5">
                   POST /admin/reindex · Bulk flushes and rebuilds OpenSearch index directly from PostgreSQL.
                 </p>
-                <span className="text-[11px] font-mono text-slate-500 mt-1">
+                <span className="text-[11px] text-slate-400 block mt-1">
                   Judge Proof: Self-healing capability recovers from catastrophic search-indexer outages.
                 </span>
               </div>
             </div>
-            <DemoActionButton
+            <button
+              type="button"
               onClick={handleFullReindex}
-              loading={isReindexing}
-              variant="primary"
-              icon={RefreshCw}
-              size="md"
-              className="shrink-0 font-mono font-bold"
+              disabled={isReindexing}
+              className="h-[36px] px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-xs shadow-indigo-100 transition-colors shrink-0 cursor-pointer"
             >
-              8. Full Reindex
-            </DemoActionButton>
+              <RefreshCw className={`w-3.5 h-3.5 ${isReindexing ? 'animate-spin' : ''}`} />
+              <span>8. Full Reindex</span>
+            </button>
           </div>
         </div>
 
-        {/* RIGHT: PERSISTENT VERIFICATION CHECKLIST */}
-        <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
-          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 shadow-2xl flex flex-col gap-4 backdrop-blur-md">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider">
+        {/* RIGHT: PERSISTENT VERIFICATION CHECKLIST (4 cols) */}
+        <div className="lg:col-span-4 flex flex-col gap-4 sticky top-20">
+          <div className="bg-white border border-[#E5E7EB] rounded-lg p-5 shadow-2xs flex flex-col gap-3">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E7EB]">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <h3 className="text-sm font-semibold text-[#111827]">
                   Judge Checklist
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={resetChecklist}
-                className="text-[10px] font-mono text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                className="text-[11px] text-slate-500 hover:text-rose-600 transition-colors cursor-pointer"
               >
                 Clear All
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
-              Mark each demonstration capability as verified. Progress persists across page refreshes in <code className="font-mono text-slate-300">localStorage</code>.
+            <p className="text-xs text-[#6B7280]">
+              Mark each demonstration capability as verified. Progress persists in localStorage across reloads.
             </p>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 pt-1">
               {DEFAULT_CHECKLIST.map((item) => {
                 const isChecked = Boolean(checkedItems[item.id]);
                 return (
@@ -509,24 +483,24 @@ export default function DemoRunbook() {
                     key={item.id}
                     type="button"
                     onClick={() => toggleChecklist(item.id)}
-                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                    className={`p-3 rounded-lg border text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
                       isChecked
-                        ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-200 shadow-md shadow-emerald-950/30'
-                        : 'bg-ink-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                        : 'bg-[#F8FAFC] border-[#E5E7EB] text-slate-600 hover:border-slate-300'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
                       {isChecked ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-400" />
+                        <CheckSquare className="w-4 h-4 text-emerald-600" />
                       ) : (
-                        <Square className="w-4 h-4 text-slate-600" />
+                        <Square className="w-4 h-4 text-slate-400" />
                       )}
                     </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className={`text-xs font-mono font-bold ${isChecked ? 'text-white' : 'text-slate-300'}`}>
+                    <div className="flex flex-col">
+                      <span className={`text-xs font-semibold ${isChecked ? 'text-slate-900' : 'text-slate-700'}`}>
                         {item.label}
                       </span>
-                      <span className="text-[11px] text-slate-400 leading-relaxed font-sans">
+                      <span className="text-[11px] text-[#6B7280] leading-snug mt-0.5">
                         {item.detail}
                       </span>
                     </div>

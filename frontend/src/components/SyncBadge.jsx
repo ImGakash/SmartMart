@@ -3,30 +3,30 @@ import { CheckCircle2, RefreshCw, XCircle, HelpCircle } from 'lucide-react';
 
 const SYNC_MAP = {
   PASS: {
-    bg: 'bg-emerald-500/15',
-    border: 'border-emerald-500/40',
-    text: 'text-emerald-400',
+    bg: 'bg-[#ECFDF5]',
+    border: 'border-emerald-200/80',
+    text: 'text-[#047857]',
     icon: CheckCircle2,
     spin: false,
   },
   SYNCING: {
-    bg: 'bg-amber-500/20',
-    border: 'border-amber-500/50',
-    text: 'text-amber-300',
+    bg: 'bg-[#FFFBEB]',
+    border: 'border-amber-200/80',
+    text: 'text-[#B45309]',
     icon: RefreshCw,
     spin: true,
   },
   FAIL: {
-    bg: 'bg-rose-500/25',
-    border: 'border-rose-500/60',
-    text: 'text-rose-400',
+    bg: 'bg-[#FEF2F2]',
+    border: 'border-red-200/80',
+    text: 'text-[#B91C1C]',
     icon: XCircle,
     spin: false,
   },
   MISSING: {
-    bg: 'bg-slate-800',
-    border: 'border-slate-700',
-    text: 'text-slate-400',
+    bg: 'bg-slate-100',
+    border: 'border-slate-200',
+    text: 'text-slate-600',
     icon: HelpCircle,
     spin: false,
   },
@@ -34,7 +34,7 @@ const SYNC_MAP = {
 
 /**
  * SyncBadge: Renders reconciliation status (PASS | SYNCING | FAIL | MISSING).
- * Used in ProductDetail, POS proof, and Control Tower reconciliation table.
+ * Uses soft SaaS pill styling with icons.
  */
 export default function SyncBadge({ status = 'PASS', className = '' }) {
   const norm = String(status).toUpperCase();
@@ -43,9 +43,9 @@ export default function SyncBadge({ status = 'PASS', className = '' }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-black tracking-wider uppercase border shadow-sm ${conf.bg} ${conf.border} ${conf.text} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold uppercase border shadow-2xs ${conf.bg} ${conf.border} ${conf.text} ${className}`}
     >
-      <Icon className={`w-3.5 h-3.5 ${conf.spin ? 'animate-spin' : ''}`} />
+      <Icon className={`w-3.5 h-3.5 shrink-0 ${conf.spin ? 'animate-spin' : ''}`} />
       <span>{norm}</span>
     </span>
   );

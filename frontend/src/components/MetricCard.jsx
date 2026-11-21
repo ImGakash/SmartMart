@@ -1,16 +1,17 @@
 import React from 'react';
 
-const TONE_MAP = {
-  default: 'text-white border-slate-800 bg-slate-900',
-  success: 'text-emerald-400 border-emerald-500/40 bg-emerald-950/40 shadow-emerald-950/20',
-  danger: 'text-rose-400 border-rose-500/40 bg-rose-950/40 shadow-rose-950/20',
-  warning: 'text-amber-400 border-amber-500/40 bg-amber-950/40 shadow-amber-950/20',
-  info: 'text-sky-400 border-sky-500/40 bg-sky-950/40 shadow-sky-950/20',
-  purple: 'text-indigo-400 border-indigo-500/40 bg-indigo-950/40 shadow-indigo-950/20',
+const TONE_VALUE_MAP = {
+  default: 'text-[#111827]',
+  success: 'text-[#047857]',
+  danger: 'text-[#B91C1C]',
+  warning: 'text-[#B45309]',
+  info: 'text-[#1D4ED8]',
+  purple: 'text-[#4F46E5]',
 };
 
 /**
- * MetricCard: Huge monospace number for 5-meter projector visibility.
+ * MetricCard: Clean, professional metric card with controlled 24px font size.
+ * Matches Stripe / Linear SaaS dashboard conventions.
  */
 export default function MetricCard({
   title,
@@ -20,25 +21,25 @@ export default function MetricCard({
   icon: Icon,
   className = '',
 }) {
-  const toneClasses = TONE_MAP[tone] || TONE_MAP.default;
+  const valueColor = TONE_VALUE_MAP[tone] || TONE_VALUE_MAP.default;
 
   return (
     <div
-      className={`border rounded-2xl p-5 flex flex-col justify-between gap-2 shadow-xl backdrop-blur-sm transition-all duration-200 ${toneClasses} ${className}`}
+      className={`bg-white border border-[#E5E7EB] rounded-lg p-4 flex flex-col justify-between gap-1 shadow-2xs transition-colors ${className}`}
     >
-      <div className="flex items-center justify-between text-slate-400">
-        <span className="text-[11px] font-mono uppercase font-bold tracking-wider">
+      <div className="flex items-center justify-between text-[#6B7280]">
+        <span className="text-[11px] font-semibold uppercase tracking-wider">
           {title}
         </span>
-        {Icon && <Icon className="w-4 h-4 opacity-75" />}
+        {Icon && <Icon className="w-4 h-4 text-slate-400" />}
       </div>
 
-      <div className="text-3xl sm:text-4xl font-mono font-black tracking-tight leading-none my-1">
+      <div className={`text-2xl font-semibold font-mono tracking-tight my-0.5 ${valueColor}`}>
         {value}
       </div>
 
       {sublabel && (
-        <div className="text-xs text-slate-400 font-medium tracking-wide">
+        <div className="text-xs text-[#6B7280] font-medium truncate">
           {sublabel}
         </div>
       )}
