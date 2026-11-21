@@ -163,8 +163,9 @@ export default function RaceArena() {
   const successCount = visibleResults.filter((r) => r.status === 'SUCCESS').length;
   const rejectedCount = visibleResults.filter((r) => r.status === 'INSUFFICIENT_STOCK').length;
 
-  // DB Proof Invariant rows
-  const noNegativeStockStatus = xrayConsistency?.find((c) => c.name === 'no_negative_stock')?.status || (summary?.finalStock < 0 ? 'FAIL' : 'PASS');
+  const noNegativeStockStatus =
+    xrayConsistency?.find((c) => c.name === 'no_negative_stock')?.status ||
+    (summary?.finalStock < 0 ? 'FAIL' : 'PASS');
 
   const dbProofRows = summary
     ? [
@@ -211,12 +212,12 @@ export default function RaceArena() {
   ];
 
   return (
-    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8">
-      {/* Arena Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-rose-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
+    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8 font-sans">
+      {/* Dramatic Arena Header */}
+      <div className="bg-gradient-to-r from-ink-950 via-rose-950/40 to-ink-950 border border-slate-800 rounded-3xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1.5">
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5 uppercase">
               <Flame className="w-3.5 h-3.5 text-rose-400" />
               HIGH CONCURRENCY STRESS TEST
             </span>
@@ -234,7 +235,7 @@ export default function RaceArena() {
         </div>
 
         {/* Live Baseline Indicator */}
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 min-w-[220px] text-right">
+        <div className="bg-ink-950 border border-slate-800 rounded-2xl p-4 min-w-[220px] text-right shadow-inner">
           <div className="text-[10px] text-slate-400 uppercase font-mono font-bold mb-1">
             Current Live Stock
           </div>
@@ -282,25 +283,25 @@ export default function RaceArena() {
 
       {/* Fixed Configuration Read-only Chips */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-1">
+        <div className="bg-ink-800/70 border border-line rounded-2xl p-3.5 flex flex-col gap-1 backdrop-blur-md">
           <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Target Product</span>
           <span className="text-sm font-bold text-white truncate">boAt Airdopes 141 (P01)</span>
           <span className="text-[10px] font-mono text-slate-500 truncate">{FIXED_PRODUCT_ID}</span>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-1">
+        <div className="bg-ink-800/70 border border-line rounded-2xl p-3.5 flex flex-col gap-1 backdrop-blur-md">
           <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Store Hub</span>
           <span className="text-sm font-bold text-white">BLR-01 Bengaluru (Indiranagar)</span>
           <span className="text-[10px] font-mono text-slate-500 truncate">{FIXED_STORE_ID}</span>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-1">
+        <div className="bg-ink-800/70 border border-line rounded-2xl p-3.5 flex flex-col gap-1 backdrop-blur-md">
           <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Concurrency Level</span>
           <span className="text-sm font-bold text-white font-mono">{BUYERS_COUNT} Parallel Buyers</span>
           <span className="text-[10px] font-mono text-slate-500">Seeded Customers c01 - c50</span>
         </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3.5 flex flex-col gap-1 justify-between">
+        <div className="bg-ink-800/70 border border-line rounded-2xl p-3.5 flex flex-col gap-1 justify-between backdrop-blur-md">
           <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Database Reset</span>
           <DemoActionButton
             onClick={handleResetDemo}
@@ -326,7 +327,7 @@ export default function RaceArena() {
           className={`flex-1 p-6 rounded-2xl border-2 transition-all flex items-center justify-between gap-4 cursor-pointer text-left ${
             mode === 'safe'
               ? 'bg-emerald-950/80 border-emerald-500 text-emerald-100 shadow-2xl shadow-emerald-950/50 ring-2 ring-emerald-500/30'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+              : 'bg-ink-800/70 border-slate-800 text-slate-400 hover:border-slate-700'
           }`}
         >
           <div className="flex items-center gap-4">
@@ -365,7 +366,7 @@ export default function RaceArena() {
           className={`flex-1 p-6 rounded-2xl border-2 transition-all flex items-center justify-between gap-4 cursor-pointer text-left ${
             mode === 'naive'
               ? 'bg-rose-950/80 border-rose-500 text-rose-100 shadow-2xl shadow-rose-950/50 ring-2 ring-rose-500/30'
-              : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+              : 'bg-ink-800/70 border-slate-800 text-slate-400 hover:border-slate-700'
           }`}
         >
           <div className="flex items-center gap-4">
@@ -416,8 +417,8 @@ export default function RaceArena() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: 50-cell matrix + 50-row request table */}
         <div className="lg:col-span-7 flex flex-col gap-6">
-          {/* Big Live Counter */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          {/* Live Counter */}
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl backdrop-blur-md">
             <div className="flex items-center gap-4">
               <div className="flex flex-col">
                 <span className="text-[10px] font-mono text-slate-400 uppercase font-bold tracking-wider">
@@ -444,7 +445,7 @@ export default function RaceArena() {
           </div>
 
           {/* 10x5 Grid of 50 Buyer Cells */}
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+          <div className="bg-ink-950 border border-slate-800/90 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-800">
               <span className="text-xs font-mono text-slate-400 uppercase font-bold">
                 Concurrency Matrix (10 × 5 = 50 Parallel Worker Threads)
@@ -466,7 +467,7 @@ export default function RaceArena() {
                     key={index}
                     className={`aspect-square rounded-xl border flex flex-col items-center justify-center p-1.5 text-center transition-all duration-300 shadow-sm ${
                       !isResolved
-                        ? 'bg-slate-900/60 border-slate-800 text-slate-600'
+                        ? 'bg-ink-900/60 border-slate-800 text-slate-600'
                         : isSuccess
                         ? 'bg-emerald-950 border-emerald-500/80 text-emerald-300 shadow-emerald-950/50 scale-105'
                         : 'bg-rose-950 border-rose-500/80 text-rose-300 shadow-rose-950/50 scale-105'
@@ -509,10 +510,10 @@ export default function RaceArena() {
           </div>
 
           {/* 50-ROW LIVE REQUEST TABLE */}
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4">
+          <div className="bg-ink-950 border border-slate-800/90 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
-                <ListOrdered className="w-4 h-4 text-indigo-400" />
+                <ListOrdered className="w-4 h-4 text-cyan" />
                 <span className="text-xs font-mono text-slate-300 uppercase font-bold tracking-wider">
                   Live Concurrency Requests (50 Invocations)
                 </span>
@@ -522,9 +523,9 @@ export default function RaceArena() {
               </span>
             </div>
 
-            <div className="overflow-x-auto max-h-96 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-900/40 custom-scrollbar">
+            <div className="overflow-x-auto max-h-96 overflow-y-auto rounded-xl border border-slate-800/80 bg-ink-900/40 custom-scrollbar">
               <table className="w-full text-left border-collapse font-mono text-xs">
-                <thead className="sticky top-0 bg-slate-900 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider z-10">
+                <thead className="sticky top-0 bg-ink-900 border-b border-slate-800 text-[10px] text-slate-400 uppercase tracking-wider z-10">
                   <tr>
                     <th className="py-2.5 px-4 font-black w-14">#</th>
                     <th className="py-2.5 px-4 font-black w-24">Customer</th>
@@ -545,7 +546,7 @@ export default function RaceArena() {
                       return (
                         <tr
                           key={idx}
-                          className={`hover:bg-slate-800/40 transition-colors ${
+                          className={`hover:bg-ink-800/40 transition-colors ${
                             isSuccess ? 'bg-emerald-950/20' : 'bg-rose-950/10'
                           }`}
                         >
@@ -594,8 +595,9 @@ export default function RaceArena() {
         <div className="lg:col-span-5 flex flex-col gap-6 sticky top-24">
           <ProofPanel
             title="Database Isolation Proof"
-            serviceTag="PostgreSQL"
-            sourceInfo="Conditional SQL update vs Unsafe read-then-write"
+            service="PostgreSQL"
+            action="50 Parallel Buyers Flash-Sale"
+            proof="Atomic conditional update vs Unsafe read-then-write"
           >
             {/* HERO BANNER */}
             {summary ? (
@@ -614,7 +616,7 @@ export default function RaceArena() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-emerald-200/90 leading-relaxed mt-1">
+                  <p className="text-xs text-emerald-200/90 leading-relaxed mt-1 font-sans">
                     Strict PostgreSQL single-statement conditional update (<code className="font-mono text-emerald-300">WHERE stock_qty &gt;= 1</code>)
                     atomically serialized 50 concurrent transactions. Zero oversell achieved.
                   </p>
@@ -638,7 +640,7 @@ export default function RaceArena() {
                       </span>
                     </div>
                   </div>
-                  <p className="text-xs text-rose-200/90 leading-relaxed mt-1">
+                  <p className="text-xs text-rose-200/90 leading-relaxed mt-1 font-sans">
                     {mode === 'naive'
                       ? `50 uncoordinated threads read baseline stock of ${summary.baselineQty}, resulting in ${summary.success} successful checkouts and driving stock to ${summary.finalStock}.`
                       : `Observed ${summary.success} winners against baseline stock of ${summary.baselineQty}. Final stock: ${summary.finalStock}.`}
@@ -646,7 +648,7 @@ export default function RaceArena() {
                 </div>
               )
             ) : (
-              <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
+              <div className="bg-ink-950 border border-slate-800 rounded-xl p-4 text-center">
                 <span className="text-xs font-mono text-slate-400">
                   Ready to test. Select mode and execute 50 concurrent buyers.
                 </span>
@@ -659,19 +661,19 @@ export default function RaceArena() {
                 <MetricCard
                   title="BASELINE"
                   value={summary.baselineQty}
-                  tone="neutral"
+                  tone="default"
                   sublabel="Seed Units"
                 />
                 <MetricCard
                   title="COMMITTED"
                   value={summary.success}
-                  tone={summary.success === 1 ? 'pass' : 'fail'}
+                  tone={summary.success === 1 ? 'success' : 'danger'}
                   sublabel="Orders"
                 />
                 <MetricCard
                   title="FINAL STOCK"
                   value={summary.finalStock}
-                  tone={summary.finalStock === 0 ? 'pass' : 'fail'}
+                  tone={summary.finalStock === 0 ? 'success' : 'danger'}
                   sublabel={summary.finalStock < 0 ? 'CORRUPT' : 'SAFE'}
                 />
               </div>
@@ -680,7 +682,7 @@ export default function RaceArena() {
             {/* Database Proof Table */}
             <div className="flex flex-col gap-2">
               <span className="text-[11px] font-mono text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-indigo-400" />
+                <Database className="w-3.5 h-3.5 text-cyan" />
                 PostgreSQL Invariant Verification
               </span>
               <ProofTable
@@ -690,17 +692,17 @@ export default function RaceArena() {
               />
             </div>
 
-            {/* Aiven / Architecture Explanation */}
-            <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 flex flex-col gap-2 font-mono text-xs">
+            {/* Implementation Explanation */}
+            <div className="bg-ink-950 border border-slate-800 rounded-xl p-4 flex flex-col gap-2 font-mono text-xs">
               <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 Implementation Under the Hood
               </span>
               <p className="text-slate-300 text-[11px] leading-relaxed">
-                <strong>Safe Mode:</strong> Dispatches <code className="text-emerald-300">UPDATE store_inventory SET stock_qty = stock_qty - 1 WHERE store_id = $1 AND product_id = $2 AND stock_qty &gt;= 1</code>. Row-level locks in PostgreSQL serialize competing threads without table locks.
+                <strong>Safe Mode:</strong> Dispatches <code className="text-emerald-300">UPDATE store_inventory SET stock_qty = stock_qty - 1 WHERE store_id = $1 AND product_id = $2 AND stock_qty &gt;= 1</code>.
               </p>
               <p className="text-slate-400 text-[11px] leading-relaxed">
-                <strong>Naive Mode:</strong> Executes <code className="text-rose-300">SELECT stock_qty</code>, pauses 50ms, then <code className="text-rose-300">UPDATE SET stock_qty = stock_qty - 1</code> without qualification, allowing interleaved reads to corrupt stock.
+                <strong>Naive Mode:</strong> Executes <code className="text-rose-300">SELECT stock_qty</code>, pauses 50ms, then <code className="text-rose-300">UPDATE SET stock_qty = stock_qty - 1</code> without qualification.
               </p>
             </div>
           </ProofPanel>

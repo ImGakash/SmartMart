@@ -40,7 +40,7 @@ const DEFAULT_CHECKLIST = [
 
 export default function DemoRunbook() {
   const navigate = useNavigate();
-  const { showToast, healthStatus, selectedStore } = useApp();
+  const { showToast, healthStatus } = useApp();
 
   // Pre-flight Telemetry
   const [loadingPreflight, setLoadingPreflight] = useState(true);
@@ -88,7 +88,6 @@ export default function DemoRunbook() {
         apiGet('/xray/metrics').catch(() => null),
       ]);
 
-      // BLR-01 stock for P01
       if (prodRes?.availability) {
         const blr = prodRes.availability.find(
           (a) => a.storeId === '20000000-0000-4000-8000-000000000001'
@@ -160,12 +159,12 @@ export default function DemoRunbook() {
   const completedChecksCount = Object.values(checkedItems).filter(Boolean).length;
 
   return (
-    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8">
+    <div className="max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-8 flex flex-col gap-8 font-sans">
       {/* Runbook Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-sky-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
+      <div className="bg-gradient-to-r from-ink-950 via-sky-950/40 to-ink-950 border border-slate-800 rounded-3xl p-6 lg:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30 flex items-center gap-1.5">
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40 flex items-center gap-1.5 uppercase tracking-wider">
               <BookOpen className="w-3.5 h-3.5 text-sky-400" />
               PRESENTER RUNBOOK
             </span>
@@ -181,7 +180,7 @@ export default function DemoRunbook() {
           </p>
         </div>
 
-        <div className="flex flex-col items-end gap-1.5 bg-slate-950 border border-slate-800 rounded-xl p-4 min-w-[220px]">
+        <div className="flex flex-col items-end gap-1.5 bg-ink-950 border border-slate-800 rounded-2xl p-4 min-w-[220px] shadow-inner">
           <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">
             Demo Readiness
           </span>
@@ -195,10 +194,10 @@ export default function DemoRunbook() {
       </div>
 
       {/* PRE-FLIGHT STATUS STRIP */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-ink-800/70 border border-line rounded-3xl p-5 shadow-xl backdrop-blur-md flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-slate-800 text-slate-300 border border-slate-700">
-            <Activity className="w-5 h-5 text-indigo-400" />
+          <div className="p-2.5 rounded-xl bg-ink-950 text-slate-300 border border-slate-800">
+            <Activity className="w-5 h-5 text-cyan" />
           </div>
           <div>
             <span className="text-xs font-mono font-bold text-slate-200 uppercase tracking-wider block">
@@ -213,7 +212,7 @@ export default function DemoRunbook() {
         {/* Status Indicators */}
         <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
           {/* Services */}
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
             <span className="text-slate-400 font-bold">SERVICES:</span>
             <ProofBadge
               status={healthStatus?.pg === 'up' ? 'pass' : 'fail'}
@@ -230,7 +229,7 @@ export default function DemoRunbook() {
           </div>
 
           {/* Consistency */}
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
             <span className="text-slate-400 font-bold">CONSISTENCY:</span>
             <ProofBadge
               status={consistencyPassing === totalConsistency ? 'pass' : 'warn'}
@@ -239,7 +238,7 @@ export default function DemoRunbook() {
           </div>
 
           {/* P01 Seed Stock */}
-          <div className="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+          <div className="flex items-center gap-2 bg-ink-950 px-3 py-1.5 rounded-xl border border-slate-800">
             <span className="text-slate-400 font-bold">P01 STOCK:</span>
             <ProofBadge
               status={p01Stock === 1 ? 'pass' : 'warn'}
@@ -261,9 +260,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 1 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 1
               </span>
               <div className="flex flex-col">
@@ -289,9 +288,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 2 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 2
               </span>
               <div className="flex flex-col">
@@ -316,13 +315,13 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 3 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 3
               </span>
               <div className="flex flex-col">
-                <span className="text-base font-mono font-bold text-white">Open Cart & Add Items</span>
+                <span className="text-base font-mono font-bold text-white">Open Cart &amp; Add Items</span>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Navigate /cart · Shows selected items with live calculated paise-to-rupee totals and advisory stock.
                 </p>
@@ -343,9 +342,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 4 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-sky-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 4
               </span>
               <div className="flex flex-col">
@@ -370,9 +369,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 5 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-amber-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 5
               </span>
               <div className="flex flex-col">
@@ -397,9 +396,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 6 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-rose-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-rose-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 6
               </span>
               <div className="flex flex-col">
@@ -424,9 +423,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 7 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-emerald-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-emerald-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 7
               </span>
               <div className="flex flex-col">
@@ -451,9 +450,9 @@ export default function DemoRunbook() {
           </div>
 
           {/* Step 8 */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors">
+          <div className="bg-ink-800/70 border border-line rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition-colors backdrop-blur-md">
             <div className="flex items-start gap-4">
-              <span className="w-8 h-8 rounded-xl bg-slate-800 text-indigo-400 font-mono font-black text-sm flex items-center justify-center border border-slate-700 shrink-0">
+              <span className="w-8 h-8 rounded-xl bg-ink-950 text-indigo-400 font-mono font-black text-sm flex items-center justify-center border border-slate-800 shrink-0">
                 8
               </span>
               <div className="flex flex-col">
@@ -481,7 +480,7 @@ export default function DemoRunbook() {
 
         {/* RIGHT: PERSISTENT VERIFICATION CHECKLIST */}
         <div className="lg:col-span-4 flex flex-col gap-6 sticky top-24">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex flex-col gap-4">
+          <div className="bg-ink-800/70 border border-line rounded-3xl p-6 shadow-2xl flex flex-col gap-4 backdrop-blur-md">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2.5">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
@@ -510,10 +509,10 @@ export default function DemoRunbook() {
                     key={item.id}
                     type="button"
                     onClick={() => toggleChecklist(item.id)}
-                    className={`p-3.5 rounded-xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
+                    className={`p-3.5 rounded-2xl border text-left transition-all flex items-start gap-3 cursor-pointer ${
                       isChecked
                         ? 'bg-emerald-950/60 border-emerald-500/60 text-emerald-200 shadow-md shadow-emerald-950/30'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                        : 'bg-ink-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
