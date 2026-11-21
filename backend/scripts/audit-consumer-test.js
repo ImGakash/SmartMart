@@ -3,108 +3,113 @@ const { startAuditConsumer, stopAuditConsumer } = require('../src/events/auditCo
 const { bus } = require('../src/events/bus');
 const { randomUUID } = require('crypto');
 
-async function runAuditConsumerTest() {
+async function testAuditConsumer() {
   console.log('=== STEP 9: AUDIT CONSUMER & SSE WIRING TEST ===\n');
 
   const testOrderId = randomUUID();
+  const testProductId = '10000000-0000-4000-8000-000000000001';
   const orderEventId = randomUUID();
   const inventoryEventId = randomUUID();
+  const testGroupId = `audit-timeline-test-${Date.now()}`;
 
   try {
-    // 1. Connect Producer and start Audit Consumer
-    console.log('[1] Connecting Producer and starting Audit Consumer (audit-timeline)...');
+    // 1. Connect Producer and start Consumer
+    console.log('[1] Connecting Producer and starting Audit Consumer...');
     await producer.connect();
-    await startAuditConsumer();
+    await startAuditConsumer({ groupId: testGroupId, fromBeginning: false });
 
-    // 2. Set up Promises to wait for the KAFKA_EVENT_RECEIVED bus events
-    const orderEventPromise = new Promise((resolve) => {
-      bus.once(`order:${testOrderId}`, (data) => {
-        if (data.stage === 'KAFKA_EVENT_RECEIVED' && data.detail.eventType === 'OrderPlaced') {
-          resolve(data);
-        }
-      });
+    // 2. Set up Promise-based listener on bus.js
+    console.log('[2] Setting up bus.js listeners for OrderPlaced and StoreStockChanged...');
+    let resolveOrderEvent;
+    let resolveInventoryEvent;
+
+    const orderPromise = new Promise((resolve, reject) => {
+      resolveOrderEvent = resolve;
+      setTimeout(() => reject(new Error('Timed out waiting for OrderPlaced stage on bus.js (15s)')), 15000);
     });
 
-    const inventoryEventPromise = new Promise((resolve) => {
-      bus.once(`order:${testOrderId}`, (data) => {
-        if (data.stage === 'KAFKA_EVENT_RECEIVED' && data.detail.eventType === 'StoreStockChanged') {
-          resolve(data);
-        }
-      });
+    const inventoryPromise = new Promise((resolve, reject) => {
+      resolveInventoryEvent = resolve;
+      setTimeout(() => reject(new Error('Timed out waiting for StoreStockChanged stage on bus.js (15s)')), 15000);
     });
 
-    // 3. Publish OrderPlaced event
-    console.log('\n[2] Publishing OrderPlaced event to order-events...');
-    const orderEnvelope = {
+    const capturedEvents = [];
+    bus.on(`order:${testOrderId}`, (data) => {
+      console.log(`    [bus.js SSE Event Received]: Stage=${data.stage} | Topic=${data.detail && data.detail.topic} | Type=${data.detail && data.detail.eventType}`);
+      capturedEvents.push(data);
+
+      if (data.stage === 'KAFKA_EVENT_RECEIVED') {
+        if (data.detail.eventType === 'OrderPlaced') {
+          resolveOrderEvent(data);
+        } else if (data.detail.eventType === 'StoreStockChanged') {
+          resolveInventoryEvent(data);
+        }
+      }
+    });
+
+    // 3. Publish OrderPlaced event to order-events
+    console.log('\n[3] Publishing OrderPlaced to "order-events"...');
+    const orderPayload = {
       schemaVersion: 1,
       eventId: orderEventId,
       eventType: 'OrderPlaced',
       occurredAt: new Date().toISOString(),
       orderId: testOrderId,
-      orderNumber: 'SM-AUDIT-001',
-      totalPaise: 299900
+      orderNumber: 'SM-AUDIT-999',
+      totalPaise: 129900
     };
-
     await producer.send({
       topic: 'order-events',
-      messages: [{ key: testOrderId, value: JSON.stringify(orderEnvelope) }]
+      messages: [{ key: testOrderId, value: JSON.stringify(orderPayload) }]
     });
 
-    // 4. Publish StoreStockChanged event
-    console.log('[3] Publishing StoreStockChanged event to inventory-events...');
-    const inventoryEnvelope = {
+    // 4. Publish StoreStockChanged event to inventory-events
+    console.log('\n[4] Publishing StoreStockChanged to "inventory-events"...');
+    const inventoryPayload = {
       schemaVersion: 1,
       eventId: inventoryEventId,
       eventType: 'StoreStockChanged',
       occurredAt: new Date().toISOString(),
-      productId: '10000000-0000-4000-8000-000000000001',
+      productId: testProductId,
       storeId: '20000000-0000-4000-8000-000000000001',
       qtySold: 1,
       source: 'ONLINE',
       orderId: testOrderId
     };
-
     await producer.send({
       topic: 'inventory-events',
-      messages: [{ key: '10000000-0000-4000-8000-000000000001', value: JSON.stringify(inventoryEnvelope) }]
+      messages: [{ key: testProductId, value: JSON.stringify(inventoryPayload) }]
     });
 
-    // 5. Wait for both bus events (max 10 seconds each)
-    console.log('\n[4] Awaiting consumption of both topics...');
-    const [orderBusEvent, inventoryBusEvent] = await Promise.all([
-      Promise.race([
-        orderEventPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout waiting for OrderPlaced KAFKA_EVENT_RECEIVED')), 10000))
-      ]),
-      Promise.race([
-        inventoryEventPromise,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout waiting for StoreStockChanged KAFKA_EVENT_RECEIVED')), 10000))
-      ])
-    ]);
+    // 5. Await both events via Promise.all
+    console.log('\n[5] Awaiting both events via Promise.all...');
+    const [orderStage, inventoryStage] = await Promise.all([orderPromise, inventoryPromise]);
 
-    // 6. Verifications
-    console.log('\n[5] Verifications:');
-    console.log('    OrderPlaced bus event:', JSON.stringify(orderBusEvent, null, 2));
-    console.log('    StoreStockChanged bus event:', JSON.stringify(inventoryBusEvent, null, 2));
+    // 6. Assertions
+    console.log('\n[6] Contract Verifications:');
+    console.log('    OrderPlaced Event Received:');
+    console.log('   ', orderStage.detail);
+    console.log('    StoreStockChanged Event Received:');
+    console.log('   ', inventoryStage.detail);
 
-    const orderReceived = orderBusEvent && orderBusEvent.stage === 'KAFKA_EVENT_RECEIVED';
-    const inventoryReceived = inventoryBusEvent && inventoryBusEvent.stage === 'KAFKA_EVENT_RECEIVED';
-    const orderMetadataComplete = orderBusEvent && 
-      orderBusEvent.detail.eventType === 'OrderPlaced' &&
-      orderBusEvent.detail.eventId === orderEventId &&
-      orderBusEvent.detail.topic === 'order-events';
-    const inventoryMetadataComplete = inventoryBusEvent && 
-      inventoryBusEvent.detail.eventType === 'StoreStockChanged' &&
-      inventoryBusEvent.detail.eventId === inventoryEventId &&
-      inventoryBusEvent.detail.topic === 'inventory-events';
+    const hasOrderFields =
+      orderStage.stage === 'KAFKA_EVENT_RECEIVED' &&
+      orderStage.detail.eventType === 'OrderPlaced' &&
+      orderStage.detail.eventId === orderEventId &&
+      orderStage.detail.topic === 'order-events' &&
+      typeof orderStage.detail.offset === 'string';
 
-    console.log('\n[6] Summary:');
-    console.log(`    - OrderPlaced received on order-events: ${orderReceived ? 'PASS' : 'FAIL'}`);
-    console.log(`    - StoreStockChanged received on inventory-events: ${inventoryReceived ? 'PASS' : 'FAIL'}`);
-    console.log(`    - OrderPlaced metadata payload complete: ${orderMetadataComplete ? 'PASS' : 'FAIL'}`);
-    console.log(`    - StoreStockChanged metadata payload complete: ${inventoryMetadataComplete ? 'PASS' : 'FAIL'}`);
+    const hasInventoryFields =
+      inventoryStage.stage === 'KAFKA_EVENT_RECEIVED' &&
+      inventoryStage.detail.eventType === 'StoreStockChanged' &&
+      inventoryStage.detail.eventId === inventoryEventId &&
+      inventoryStage.detail.topic === 'inventory-events' &&
+      typeof inventoryStage.detail.offset === 'string';
 
-    if (orderReceived && inventoryReceived && orderMetadataComplete && inventoryMetadataComplete) {
+    console.log(`\n    - OrderPlaced stage and metadata complete: ${hasOrderFields ? 'PASS' : 'FAIL'}`);
+    console.log(`    - StoreStockChanged stage and metadata complete: ${hasInventoryFields ? 'PASS' : 'FAIL'}`);
+
+    if (hasOrderFields && hasInventoryFields) {
       console.log('\n=== STEP 9 RESULT: PASS ===');
     } else {
       console.log('\n=== STEP 9 RESULT: FAIL ===');
@@ -121,4 +126,4 @@ async function runAuditConsumerTest() {
   }
 }
 
-runAuditConsumerTest();
+testAuditConsumer();
